@@ -949,13 +949,16 @@ const BACKEND = 'https://avo-bus-backend-production.up.railway.app';
 const WS_URL  = 'wss://avo-bus-backend-production.up.railway.app/ws';
 
 // ─── SPLASH ───────────────────────────────────────────────
-// Splash desaparece siempre, con o sin recursos externos
+// Splash desaparece siempre
+let splashHidden = false;
 function hideSplash() {
-  document.getElementById('splash').classList.add('hidden');
+  if (splashHidden) return;
+  splashHidden = true;
+  const el = document.getElementById('splash');
+  if (el) { el.style.opacity='0'; el.style.transform='scale(1.05)'; setTimeout(()=>{ el.style.display='none'; },500); }
   initApp();
 }
-setTimeout(hideSplash, 2000);
-window.addEventListener('load', () => setTimeout(hideSplash, 500));
+setTimeout(hideSplash, 1500);
 
 // ─── NAVIGATION ───────────────────────────────────────────
 let currentTab = 'home';
