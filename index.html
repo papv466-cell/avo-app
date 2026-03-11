@@ -7,11 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a1628">
 <title>AVO Group — Movilidad Inteligente</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onerror="window.L=null"></script>
+<!-- fonts loaded from system -->
+<!-- Leaflet loads dynamically when map opens -->
 <style>
 :root {
   --navy: #0a1628;
@@ -37,7 +34,7 @@ html, body {
   height: 100%;
   background: var(--navy);
   color: var(--white);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -65,7 +62,7 @@ html, body {
 }
 .logo-wrap { display:flex; align-items:center; gap:10px; }
 .logo-img { height: 32px; }
-.header-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--white); letter-spacing:0.02em; }
+.header-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:15px; font-weight:700; color:var(--white); letter-spacing:0.02em; }
 .header-sub { font-size:10px; color:var(--cyan); letter-spacing:0.06em; text-transform:uppercase; }
 .header-right { display:flex; gap:10px; align-items:center; }
 .icon-btn {
@@ -149,7 +146,7 @@ html, body {
   pointer-events:none;
 }
 .hero-greeting { font-size:12px; color:var(--muted); margin-bottom:4px; }
-.hero-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1.2; margin-bottom:16px; }
+.hero-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:22px; font-weight:800; line-height:1.2; margin-bottom:16px; }
 .hero-title span { color:var(--cyan); }
 
 /* LIVE BUS CARD */
@@ -170,7 +167,7 @@ html, body {
 .live-badge span { font-size:10px; font-weight:600; color:var(--green); letter-spacing:0.08em; text-transform:uppercase; }
 
 .bus-eta-display { display:flex; align-items:baseline; gap:8px; margin-bottom:8px; }
-.eta-number { font-family:'Syne',sans-serif; font-size:52px; font-weight:800; color:var(--white); line-height:1; }
+.eta-number { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:52px; font-weight:800; color:var(--white); line-height:1; }
 .eta-unit { font-size:16px; color:var(--muted); }
 .eta-label { font-size:13px; color:var(--muted); margin-bottom:12px; }
 .eta-label strong { color:var(--white); }
@@ -195,14 +192,14 @@ html, body {
   flex:1; background:rgba(255,255,255,0.06); border-radius:10px;
   padding:8px 10px; text-align:center;
 }
-.bus-info-chip .val { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--white); }
+.bus-info-chip .val { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:15px; font-weight:700; color:var(--white); }
 .bus-info-chip .lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
 
 /* CTA BUTTONS */
 .cta-row { display:flex; gap:10px; margin-bottom:16px; }
 .cta-btn {
   flex:1; border:none; border-radius:14px; padding:14px 12px;
-  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+  font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:13px; font-weight:700;
   cursor:pointer; transition:all .2s; display:flex; flex-direction:column;
   align-items:center; gap:5px;
 }
@@ -222,7 +219,7 @@ html, body {
   border: 1px solid rgba(255,184,48,0.25);
   border-radius:20px; padding:18px; margin-bottom:16px;
 }
-.llego-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; margin-bottom:4px; }
+.llego-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:16px; font-weight:800; margin-bottom:4px; }
 .llego-sub { font-size:12px; color:var(--muted); margin-bottom:14px; }
 .llego-stops { display:flex; gap:8px; flex-wrap:wrap; }
 .stop-pill {
@@ -236,7 +233,7 @@ html, body {
 
 /* SERVICES GRID */
 .section-title {
-  font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+  font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:14px; font-weight:700;
   color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;
   margin-bottom:12px;
 }
@@ -266,7 +263,7 @@ html, body {
 .service-card.school .service-icon { background:rgba(255,184,48,0.15); }
 .service-card.tour .service-icon { background:rgba(0,232,160,0.15); }
 .service-card.groups .service-icon { background:rgba(167,139,250,0.15); }
-.service-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; margin-bottom:3px; }
+.service-name { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:13px; font-weight:700; margin-bottom:3px; }
 .service-desc { font-size:10px; color:var(--muted); line-height:1.4; }
 .service-arrow { position:absolute; top:14px; right:14px; color:var(--muted); }
 
@@ -282,7 +279,7 @@ html, body {
 .line-badge {
   min-width:52px; height:36px; border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-family:'Syne',sans-serif; font-size:13px; font-weight:800;
+  font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:13px; font-weight:800;
 }
 .line-badge.m135 { background:rgba(0,200,232,0.2); color:var(--cyan); border:1px solid rgba(0,200,232,0.3); }
 .line-badge.m140 { background:rgba(0,232,160,0.2); color:var(--green); border:1px solid rgba(0,232,160,0.3); }
@@ -316,7 +313,7 @@ html, body {
 }
 .map-search input {
   flex:1; background:none; border:none; outline:none;
-  color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px;
+  color:var(--white); font-family:'SF Pro Text','Helvetica Neue',Arial,sans-serif; font-size:14px;
 }
 .map-search input::placeholder { color:var(--muted); }
 
@@ -354,7 +351,7 @@ html, body {
   border:1px solid rgba(0,200,232,0.3);
   display:flex; align-items:center; justify-content:center; font-size:22px;
 }
-.map-bus-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; }
+.map-bus-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:16px; font-weight:700; }
 .map-bus-sub { font-size:12px; color:var(--muted); }
 .next-stops { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
 .next-stops::-webkit-scrollbar { display:none; }
@@ -363,7 +360,7 @@ html, body {
   border-radius:12px; padding:10px 12px; min-width:120px;
 }
 .ns-name { font-size:11px; font-weight:600; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ns-eta { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--cyan); }
+.ns-eta { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:18px; font-weight:800; color:var(--cyan); }
 .ns-eta-unit { font-size:10px; color:var(--muted); }
 
 /* ─── STOPS PAGE ─── */
@@ -373,7 +370,7 @@ html, body {
 }
 .stop-search input {
   flex:1; background:none; border:none; outline:none;
-  color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px;
+  color:var(--white); font-family:'SF Pro Text','Helvetica Neue',Arial,sans-serif; font-size:14px;
 }
 .stop-search input::placeholder { color:var(--muted); }
 
@@ -416,7 +413,7 @@ html, body {
 .stop-num { font-size:10px; color:var(--muted); margin-bottom:3px; }
 .stop-name-text { font-size:13px; font-weight:600; }
 .stop-eta-badge {
-  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+  font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:13px; font-weight:700;
   padding:4px 10px; border-radius:20px;
 }
 .stop-eta-badge.arrived { background:rgba(0,232,160,0.15); color:var(--green); }
@@ -460,7 +457,7 @@ html, body {
   background: linear-gradient(135deg, rgba(0,200,232,0.1), rgba(0,168,200,0.05));
   border:1px solid rgba(0,200,232,0.25); border-radius:20px; padding:20px; margin-top:4px;
 }
-.contact-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; margin-bottom:14px; }
+.contact-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:15px; font-weight:700; margin-bottom:14px; }
 .contact-btn {
   display:flex; align-items:center; gap:12px;
   background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 14px;
@@ -483,7 +480,7 @@ html, body {
 }
 .alerts-panel.open { transform:translateX(0); }
 .alerts-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-.alerts-title { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; }
+.alerts-title { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:20px; font-weight:800; }
 .close-btn {
   width:36px; height:36px; border-radius:10px; background:var(--card);
   border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
@@ -501,16 +498,22 @@ html, body {
 .alert-time { font-size:10px; color:var(--muted); margin-top:6px; }
 
 /* ─── SPLASH ─── */
+@keyframes splashOut {
+  0%,70% { opacity:1; transform:scale(1); pointer-events:all; }
+  100% { opacity:0; transform:scale(1.05); pointer-events:none; }
+}
 #splash {
   position:fixed; inset:0; z-index:9999;
   background:var(--navy);
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
-  gap:20px; transition:opacity .5s, transform .5s;
+  gap:20px;
+  animation: splashOut 2s forwards;
+  animation-delay: 0s;
 }
-#splash.hidden { opacity:0; transform:scale(1.05); pointer-events:none; }
+#splash.hidden { display:none !important; }
 .splash-logo { height:60px; animation:splash-in .6s ease both; }
-.splash-name { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; animation:splash-in .6s .15s ease both; }
+.splash-name { font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800; font-size:28px; font-weight:800; animation:splash-in .6s .15s ease both; }
 .splash-tagline { font-size:13px; color:var(--muted); animation:splash-in .6s .3s ease both; }
 .splash-loader {
   width:120px; height:2px; background:rgba(255,255,255,0.1); border-radius:2px;
@@ -741,7 +744,7 @@ html, body {
               <div class="map-bus-sub" id="map-bus-pos">Localizando bus…</div>
             </div>
             <div style="margin-left:auto;text-align:right">
-              <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--cyan)" id="map-eta-val">—</div>
+              <div style="font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:22px;font-weight:800;color:var(--cyan)" id="map-eta-val">—</div>
               <div style="font-size:10px;color:var(--muted)">min próxima</div>
             </div>
           </div>
@@ -772,7 +775,7 @@ html, body {
           <div class="service-detail-header" onclick="toggleService('escolar')">
             <div class="service-detail-icon" style="background:rgba(255,184,48,0.15)">🎒</div>
             <div>
-              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Transporte Escolar</div>
+              <div style="font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:15px;font-weight:700">Transporte Escolar</div>
               <div style="font-size:12px;color:var(--muted)">Colegios, institutos y universidades</div>
             </div>
             <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -793,7 +796,7 @@ html, body {
           <div class="service-detail-header" onclick="toggleService('excursiones')">
             <div class="service-detail-icon" style="background:rgba(0,232,160,0.15)">🌍</div>
             <div>
-              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Excursiones y Viajes</div>
+              <div style="font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:15px;font-weight:700">Excursiones y Viajes</div>
               <div style="font-size:12px;color:var(--muted)">Turismo, circuitos y rutas</div>
             </div>
             <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -814,7 +817,7 @@ html, body {
           <div class="service-detail-header" onclick="toggleService('grupos')">
             <div class="service-detail-icon" style="background:rgba(167,139,250,0.15)">👥</div>
             <div>
-              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Traslado de Grupos</div>
+              <div style="font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:15px;font-weight:700">Traslado de Grupos</div>
               <div style="font-size:12px;color:var(--muted)">Empresas, congresos y eventos</div>
             </div>
             <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -835,7 +838,7 @@ html, body {
           <div class="service-detail-header" onclick="toggleService('vip')">
             <div class="service-detail-icon" style="background:rgba(0,200,232,0.15)">⭐</div>
             <div>
-              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">VIP & Accesibilidad</div>
+              <div style="font-family:'SF Pro Display','Helvetica Neue',Arial,sans-serif;font-weight:800;font-size:15px;font-weight:700">VIP & Accesibilidad</div>
               <div style="font-size:12px;color:var(--muted)">Servicios exclusivos y PMR</div>
             </div>
             <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -958,7 +961,8 @@ function hideSplash() {
   if (el) { el.style.opacity='0'; el.style.transform='scale(1.05)'; setTimeout(()=>{ el.style.display='none'; },500); }
   initApp();
 }
-setTimeout(hideSplash, 1500);
+setTimeout(hideSplash, 1800);
+document.addEventListener('DOMContentLoaded', () => setTimeout(hideSplash, 1200));
 
 // ─── NAVIGATION ───────────────────────────────────────────
 let currentTab = 'home';
@@ -1148,7 +1152,23 @@ function checkLlego(el, stopName) {
 let map, routeLayer;
 
 function initMap() {
-  if (!window.L) { document.getElementById('map').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6b82a8;font-size:14px">Mapa no disponible sin conexión</div>'; return; }
+  // Load Leaflet from CDN
+  if (window.L) { initMapLeaflet(); return; }
+  
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(link);
+  
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  script.onload = initMapLeaflet;
+  script.onerror = () => {
+    document.getElementById('map').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#6b82a8;font-size:14px;padding:20px;text-align:center;gap:12px"><div style="font-size:40px">🗺️</div><div>Mapa no disponible</div><div style="font-size:12px;opacity:0.6">Necesitas conexión a internet</div></div>';
+  };
+  document.head.appendChild(script);
+}
+function initMapLeaflet() {
   map = L.map('map', { zoomControl:false, attributionControl:false })
     .setView([36.67, -4.52], 11);
 
@@ -1184,6 +1204,7 @@ function initMap() {
   if (vehicleData) updateMapBus(vehicleData);
 }
 
+} // end initMapLeaflet
 // placeBusMarker replaced by updateMapBus
 
 const busMarkers = {};
