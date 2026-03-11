@@ -1,457 +1,1362 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="AVO Bus"/>
-<meta name="theme-color" content="#16213E"/>
-<title>AVO Bus · M135</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a1628">
+<title>AVO Group — Movilidad Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
-  --navy:#0F3460;--navy2:#16213E;--navy3:#0A2447;
-  --accent:#00B4D8;--accent2:#0077A8;
-  --green:#06D6A0;--orange:#FFB703;--red:#EF476F;
-  --white:#fff;--gray1:#F7F8FA;--gray2:#ECEEF2;--gray3:#B0B8C4;--gray4:#6B7280;
-  --text:#1A2332;
-  --safe-top: env(safe-area-inset-top);
-  --safe-bottom: env(safe-area-inset-bottom);
+  --navy: #0a1628;
+  --navy2: #0f1f3d;
+  --navy3: #162444;
+  --card: #1a2d50;
+  --card2: #1e3358;
+  --cyan: #00c8e8;
+  --cyan2: #00a8c8;
+  --green: #00e8a0;
+  --amber: #ffb830;
+  --red: #ff4060;
+  --white: #f0f6ff;
+  --muted: #6b82a8;
+  --border: rgba(0,200,232,0.15);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--navy2);font-family:'DM Sans',sans-serif;}
 
-/* ── Layout ── */
-#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
-.screen{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.screen.active{display:flex;}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-/* ── Status bar spacer ── */
-.statusbar{height:var(--safe-top);background:var(--navy2);flex-shrink:0;}
+html, body {
+  height: 100%;
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
-/* ── Header ── */
-.topbar{background:var(--navy2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.logo-img{height:34px;object-fit:contain;}
-.ws-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border-radius:20px;padding:5px 11px;}
-.ws-dot{width:7px;height:7px;border-radius:50%;background:var(--gray3);transition:background .4s;}
-.ws-dot.live{background:var(--green);animation:glow 1.8s infinite;}
-.ws-dot.warn{background:var(--orange);}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(6,214,160,.4)}50%{box-shadow:0 0 0 5px rgba(6,214,160,0)}}
-.ws-txt{font-size:11px;color:rgba(255,255,255,.55);font-weight:500;}
+/* ─── APP SHELL ─── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+}
 
-/* ── Scrollable content ── */
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.scroll::-webkit-scrollbar{display:none;}
+/* ─── HEADER ─── */
+#header {
+  padding: calc(var(--safe-top) + 12px) 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--navy);
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.logo-wrap { display:flex; align-items:center; gap:10px; }
+.logo-img { height: 32px; }
+.header-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--white); letter-spacing:0.02em; }
+.header-sub { font-size:10px; color:var(--cyan); letter-spacing:0.06em; text-transform:uppercase; }
+.header-right { display:flex; gap:10px; align-items:center; }
+.icon-btn {
+  width:38px; height:38px; border-radius:12px;
+  background: var(--card); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .2s;
+}
+.icon-btn:active { transform:scale(0.92); background:var(--card2); }
+.notif-dot {
+  width:8px; height:8px; background:var(--cyan);
+  border-radius:50%; position:absolute; top:8px; right:8px;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }
 
-/* ══════════ INICIO ══════════ */
-.hero-card{margin:14px;border-radius:22px;background:linear-gradient(145deg,var(--navy) 0%,#1a4a7a 100%);padding:22px;box-shadow:0 12px 40px rgba(15,52,96,.5);}
-.hero-line{font-family:'Syne',sans-serif;font-size:11px;color:var(--accent);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
-.hero-route{font-size:14px;color:rgba(255,255,255,.7);font-weight:400;margin-bottom:20px;line-height:1.4;}
+/* ─── PAGES ─── */
+#pages { flex:1; overflow:hidden; position:relative; }
+.page { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; }
+.page:not(.active) { display:none; }
 
-.live-block{display:flex;align-items:center;gap:18px;margin-bottom:20px;}
-.bus-bubble{width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:34px;flex-shrink:0;animation:breathe 2.5s ease-in-out infinite;}
-@keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,.1)}50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(255,255,255,0)}}
-.eta-wrap{}
-.eta-label{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
-.eta-row{display:flex;align-items:baseline;gap:5px;}
-.eta-num{font-family:'Syne',sans-serif;font-size:58px;font-weight:800;color:var(--white);line-height:1;}
-.eta-unit{font-size:17px;color:rgba(255,255,255,.5);font-weight:500;}
-.eta-stop{font-size:12px;color:var(--orange);font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+/* ─── SCROLL CONTAINER ─── */
+.scroll-content { padding: 16px 16px calc(16px + var(--safe-bottom)); }
 
-.offline-block{text-align:center;padding:24px 0;}
-.offline-block .emoji{font-size:40px;margin-bottom:10px;}
-.offline-title{font-family:'Syne',sans-serif;font-size:17px;color:var(--white);font-weight:700;margin-bottom:5px;}
-.offline-sub{font-size:13px;color:rgba(255,255,255,.45);line-height:1.5;}
+/* ─── TAB BAR ─── */
+#tabbar {
+  display: flex;
+  background: var(--navy2);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  flex-shrink: 0;
+  z-index: 100;
+}
+.tab {
+  flex: 1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:3px; padding:10px 4px;
+  cursor:pointer; transition:all .2s;
+  position:relative;
+}
+.tab svg { transition:all .2s; }
+.tab span { font-size:9px; font-weight:500; letter-spacing:0.04em; color:var(--muted); transition:all .2s; }
+.tab.active span { color:var(--cyan); }
+.tab.active svg { filter: drop-shadow(0 0 6px var(--cyan)); }
+.tab-indicator {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:24px; height:2px; background:var(--cyan);
+  border-radius:0 0 4px 4px; opacity:0; transition:opacity .2s;
+}
+.tab.active .tab-indicator { opacity:1; }
 
-.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.stat-box{background:rgba(255,255,255,.08);border-radius:12px;padding:10px;text-align:center;}
-.stat-v{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--white);}
-.stat-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;}
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border-radius:20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.card-glass {
+  background: rgba(26,45,80,0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius:20px;
+}
 
-.sec-title{font-size:10px;font-weight:700;color:var(--gray4);text-transform:uppercase;letter-spacing:.8px;padding:18px 16px 10px;}
+/* ─── HOME PAGE ─── */
+.hero-section {
+  background: linear-gradient(135deg, var(--navy2) 0%, var(--navy3) 100%);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-section::before {
+  content:'';
+  position:absolute; top:-60px; right:-60px;
+  width:200px; height:200px;
+  background: radial-gradient(circle, rgba(0,200,232,0.12) 0%, transparent 70%);
+  pointer-events:none;
+}
+.hero-greeting { font-size:12px; color:var(--muted); margin-bottom:4px; }
+.hero-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1.2; margin-bottom:16px; }
+.hero-title span { color:var(--cyan); }
 
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;}
-.action-btn{border:none;border-radius:18px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .15s,opacity .15s;-webkit-appearance:none;}
-.action-btn:active{transform:scale(.96);opacity:.85;}
-.action-btn .ab-icon{font-size:28px;}
-.action-btn .ab-lbl{font-size:13px;font-weight:600;color:var(--white);}
+/* LIVE BUS CARD */
+.live-bus-card {
+  background: linear-gradient(135deg, rgba(0,200,232,0.15) 0%, rgba(0,168,200,0.08) 100%);
+  border: 1px solid rgba(0,200,232,0.3);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.live-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background: rgba(0,232,160,0.15); border:1px solid rgba(0,232,160,0.3);
+  border-radius:20px; padding:4px 10px; margin-bottom:12px;
+}
+.live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse-dot 1.5s infinite; }
+.live-badge span { font-size:10px; font-weight:600; color:var(--green); letter-spacing:0.08em; text-transform:uppercase; }
 
-.sched-card{margin:0 14px;background:var(--white);border-radius:18px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.06);}
-.sched-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--gray2);}
-.sched-row:last-child{border-bottom:none;}
-.sched-t{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--navy);width:54px;}
-.sched-d{flex:1;font-size:12px;color:var(--gray4);}
-.sched-dur{font-size:11px;color:var(--gray3);}
+.bus-eta-display { display:flex; align-items:baseline; gap:8px; margin-bottom:8px; }
+.eta-number { font-family:'Syne',sans-serif; font-size:52px; font-weight:800; color:var(--white); line-height:1; }
+.eta-unit { font-size:16px; color:var(--muted); }
+.eta-label { font-size:13px; color:var(--muted); margin-bottom:12px; }
+.eta-label strong { color:var(--white); }
 
-/* ══════════ MAPA ══════════ */
-#map-container{flex:1;position:relative;}
-#map{width:100%;height:100%;}
-.map-bus-card{position:absolute;bottom:calc(10px + var(--safe-bottom));left:12px;right:12px;background:var(--white);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:1000;}
-.mbc-bus{font-size:28px;}
-.mbc-info{flex:1;}
-.mbc-name{font-size:14px;font-weight:700;color:var(--text);}
-.mbc-eta{font-size:12px;color:var(--gray4);margin-top:2px;}
-.live-badge{background:var(--green);border-radius:8px;padding:4px 9px;}
-.live-badge-txt{font-size:10px;font-weight:800;color:var(--navy2);letter-spacing:.8px;}
-.map-offline{position:absolute;bottom:calc(10px + var(--safe-bottom));left:12px;right:12px;background:var(--white);border-radius:18px;padding:14px 16px;text-align:center;color:var(--gray4);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:1000;}
+.progress-track {
+  height:4px; background:rgba(255,255,255,0.08); border-radius:4px; margin-bottom:12px; overflow:hidden;
+}
+.progress-fill {
+  height:100%; background:linear-gradient(90deg, var(--cyan2), var(--cyan));
+  border-radius:4px; transition:width 1s ease;
+  position:relative;
+}
+.progress-fill::after {
+  content:''; position:absolute; right:-1px; top:50%;
+  transform:translateY(-50%);
+  width:8px; height:8px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 8px var(--cyan);
+}
 
-/* ══════════ PARADAS ══════════ */
-.stops-list{padding:8px 12px;}
-.stop-item{display:flex;align-items:flex-start;gap:10px;background:var(--white);border-radius:14px;padding:12px 12px;margin-bottom:3px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;border:1.5px solid transparent;}
-.stop-item:active{transform:scale(.98);}
-.stop-item.nxt{background:#FFF8E7;border-color:var(--orange);}
-.stop-item.psd{opacity:.4;}
-.stop-item.sel{background:#EBF5FF;border-color:var(--accent);}
-.tl{display:flex;flex-direction:column;align-items:center;width:14px;padding-top:2px;flex-shrink:0;}
-.tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--navy);background:var(--white);flex-shrink:0;}
-.tl-dot.nxt{width:13px;height:13px;border-radius:50%;background:var(--orange);border-color:var(--orange);}
-.tl-dot.psd{border-color:var(--gray2);}
-.tl-line{width:2px;flex:1;background:var(--navy);opacity:.15;min-height:16px;margin-top:2px;}
-.tl-line.psd{opacity:.06;}
-.stop-info{flex:1;min-width:0;}
-.stop-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.stop-name.psd{color:var(--gray3);}
-.stop-num{font-size:11px;color:var(--gray3);margin-top:1px;}
-.stop-hora{font-size:11px;color:var(--gray4);margin-top:5px;background:var(--gray1);border-radius:6px;padding:4px 7px;display:inline-block;}
-.eta-tag{border-radius:8px;padding:4px 8px;min-width:46px;text-align:center;align-self:center;flex-shrink:0;}
-.eta-tag span{font-size:12px;font-weight:700;}
-.et-none{background:var(--gray2);}  .et-none span{color:var(--gray4);}
-.et-psd{background:#E0FAF2;}        .et-psd span{color:var(--green);}
-.et-nxt{background:var(--orange);}  .et-nxt span{color:var(--navy2);}
-.et-live{background:var(--navy);}   .et-live span{color:var(--white);}
+.bus-info-row { display:flex; gap:10px; }
+.bus-info-chip {
+  flex:1; background:rgba(255,255,255,0.06); border-radius:10px;
+  padding:8px 10px; text-align:center;
+}
+.bus-info-chip .val { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--white); }
+.bus-info-chip .lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
 
-/* ══════════ TAB BAR ══════════ */
-.tabbar{display:flex;background:var(--navy2);border-top:1px solid rgba(255,255,255,.08);padding-bottom:var(--safe-bottom);flex-shrink:0;}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 5px;cursor:pointer;position:relative;border:none;background:none;-webkit-appearance:none;}
-.tab-icon{font-size:22px;opacity:.4;transition:opacity .2s;}
-.tab-lbl{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;font-weight:500;transition:color .2s;}
-.tab.active .tab-icon{opacity:1;}
-.tab.active .tab-lbl{color:var(--accent);font-weight:700;}
-.tab-ind{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:2px;background:var(--accent);display:none;}
-.tab.active .tab-ind{display:block;}
-.live-dot{position:absolute;top:7px;right:calc(50% - 22px);width:8px;height:8px;border-radius:50%;background:var(--green);border:2px solid var(--navy2);}
+/* CTA BUTTONS */
+.cta-row { display:flex; gap:10px; margin-bottom:16px; }
+.cta-btn {
+  flex:1; border:none; border-radius:14px; padding:14px 12px;
+  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .2s; display:flex; flex-direction:column;
+  align-items:center; gap:5px;
+}
+.cta-btn:active { transform:scale(0.95); }
+.cta-btn.primary {
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan2) 100%);
+  color: var(--navy);
+}
+.cta-btn.secondary {
+  background: var(--card2); border:1px solid var(--border); color:var(--white);
+}
+.cta-btn svg { width:20px; height:20px; }
 
-/* Fade in */
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.fadein{animation:fadeUp .5s ease both;}
+/* LLEGO? WIDGET */
+.llego-card {
+  background: linear-gradient(135deg, rgba(255,184,48,0.12) 0%, rgba(255,184,48,0.05) 100%);
+  border: 1px solid rgba(255,184,48,0.25);
+  border-radius:20px; padding:18px; margin-bottom:16px;
+}
+.llego-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; margin-bottom:4px; }
+.llego-sub { font-size:12px; color:var(--muted); margin-bottom:14px; }
+.llego-stops { display:flex; gap:8px; flex-wrap:wrap; }
+.stop-pill {
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px; padding:7px 14px; font-size:12px; cursor:pointer;
+  transition:all .2s; white-space:nowrap;
+}
+.stop-pill:active, .stop-pill.selected {
+  background:rgba(255,184,48,0.2); border-color:rgba(255,184,48,0.5); color:var(--amber);
+}
+
+/* SERVICES GRID */
+.section-title {
+  font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+  color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;
+  margin-bottom:12px;
+}
+.services-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.service-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:18px; padding:16px; cursor:pointer; transition:all .2s;
+  position:relative; overflow:hidden;
+}
+.service-card:active { transform:scale(0.96); }
+.service-card::after {
+  content:''; position:absolute; bottom:-20px; right:-20px;
+  width:70px; height:70px; border-radius:50%;
+  opacity:0.08; transition:opacity .2s;
+}
+.service-card.bus::after { background:var(--cyan); }
+.service-card.school::after { background:var(--amber); }
+.service-card.tour::after { background:var(--green); }
+.service-card.groups::after { background:#a78bfa; }
+.service-card:active::after { opacity:0.15; }
+
+.service-icon {
+  width:40px; height:40px; border-radius:12px; margin-bottom:10px;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.service-card.bus .service-icon { background:rgba(0,200,232,0.15); }
+.service-card.school .service-icon { background:rgba(255,184,48,0.15); }
+.service-card.tour .service-icon { background:rgba(0,232,160,0.15); }
+.service-card.groups .service-icon { background:rgba(167,139,250,0.15); }
+.service-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; margin-bottom:3px; }
+.service-desc { font-size:10px; color:var(--muted); line-height:1.4; }
+.service-arrow { position:absolute; top:14px; right:14px; color:var(--muted); }
+
+/* LINES LIST */
+.lines-list { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.line-item {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:14px 16px;
+  display:flex; align-items:center; gap:14px;
+  cursor:pointer; transition:all .2s;
+}
+.line-item:active { transform:scale(0.98); background:var(--card2); }
+.line-badge {
+  min-width:52px; height:36px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Syne',sans-serif; font-size:13px; font-weight:800;
+}
+.line-badge.m135 { background:rgba(0,200,232,0.2); color:var(--cyan); border:1px solid rgba(0,200,232,0.3); }
+.line-badge.m140 { background:rgba(0,232,160,0.2); color:var(--green); border:1px solid rgba(0,232,160,0.3); }
+.line-badge.m143 { background:rgba(255,184,48,0.2); color:var(--amber); border:1px solid rgba(255,184,48,0.3); }
+.line-badge.m170 { background:rgba(0,232,160,0.2); color:var(--green); border:1px solid rgba(0,232,160,0.3); }
+.line-badge.mumfi { background:rgba(167,139,250,0.2); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); }
+.line-info { flex:1; }
+.line-name { font-size:13px; font-weight:600; margin-bottom:2px; }
+.line-route { font-size:11px; color:var(--muted); }
+.line-status { display:flex; align-items:center; gap:5px; }
+.status-dot { width:7px; height:7px; border-radius:50%; }
+.status-dot.active { background:var(--green); box-shadow:0 0 6px var(--green); }
+.status-dot.inactive { background:var(--muted); }
+.status-text { font-size:10px; font-weight:500; }
+.status-text.active { color:var(--green); }
+.status-text.inactive { color:var(--muted); }
+
+/* ─── MAP PAGE ─── */
+#map-page { display:flex; flex-direction:column; }
+#map-container { flex:1; position:relative; }
+#map { position:absolute; inset:0; }
+.map-overlay-top {
+  position:absolute; top:0; left:0; right:0; z-index:400;
+  padding:12px;
+}
+.map-search {
+  background:rgba(10,22,40,0.92); backdrop-filter:blur(16px);
+  border:1px solid var(--border); border-radius:14px;
+  display:flex; align-items:center; gap:10px;
+  padding:12px 14px;
+}
+.map-search input {
+  flex:1; background:none; border:none; outline:none;
+  color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px;
+}
+.map-search input::placeholder { color:var(--muted); }
+
+.map-lines-filter {
+  display:flex; gap:8px; overflow-x:auto; padding:8px 0 0;
+  scrollbar-width:none;
+}
+.map-lines-filter::-webkit-scrollbar { display:none; }
+.filter-chip {
+  flex-shrink:0; padding:6px 14px; border-radius:20px;
+  font-size:11px; font-weight:600; cursor:pointer;
+  border: 1px solid rgba(255,255,255,0.15);
+  background:rgba(10,22,40,0.8); color:var(--muted);
+  transition:all .2s;
+}
+.filter-chip.active { color:var(--navy); background:var(--cyan); border-color:var(--cyan); }
+
+.map-info-card {
+  position:absolute; bottom:0; left:0; right:0; z-index:400;
+  background:rgba(10,22,40,0.95); backdrop-filter:blur(20px);
+  border-top:1px solid var(--border); border-radius:20px 20px 0 0;
+  padding:16px 16px calc(16px + var(--safe-bottom));
+  transform: translateY(calc(100% - 70px));
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+}
+.map-info-card.expanded { transform:translateY(0); }
+.map-card-handle {
+  width:36px; height:4px; background:rgba(255,255,255,0.2);
+  border-radius:4px; margin:0 auto 14px; cursor:pointer;
+}
+.map-bus-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.map-bus-icon {
+  width:44px; height:44px; border-radius:14px;
+  background:linear-gradient(135deg,rgba(0,200,232,0.2),rgba(0,168,200,0.1));
+  border:1px solid rgba(0,200,232,0.3);
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+}
+.map-bus-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; }
+.map-bus-sub { font-size:12px; color:var(--muted); }
+.next-stops { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.next-stops::-webkit-scrollbar { display:none; }
+.next-stop-card {
+  flex-shrink:0; background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:10px 12px; min-width:120px;
+}
+.ns-name { font-size:11px; font-weight:600; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ns-eta { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--cyan); }
+.ns-eta-unit { font-size:10px; color:var(--muted); }
+
+/* ─── STOPS PAGE ─── */
+.stop-search {
+  background:var(--card); border:1px solid var(--border); border-radius:14px;
+  display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:16px;
+}
+.stop-search input {
+  flex:1; background:none; border:none; outline:none;
+  color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px;
+}
+.stop-search input::placeholder { color:var(--muted); }
+
+.stops-timeline { position:relative; }
+.stops-timeline::before {
+  content:''; position:absolute; left:22px; top:0; bottom:0;
+  width:2px; background: linear-gradient(180deg, var(--cyan) 0%, rgba(0,200,232,0.1) 100%);
+}
+.stop-row {
+  display:flex; align-items:flex-start; gap:14px; padding:0 0 0 0;
+  margin-bottom:2px; cursor:pointer;
+}
+.stop-node {
+  flex-shrink:0; width:44px; height:44px; display:flex;
+  align-items:center; justify-content:center; position:relative; z-index:1;
+}
+.stop-circle {
+  width:14px; height:14px; border-radius:50%;
+  border:2px solid var(--cyan); background:var(--navy);
+  transition:all .2s;
+}
+.stop-circle.passed { background:var(--cyan); border-color:var(--cyan); }
+.stop-circle.current {
+  width:18px; height:18px; background:var(--cyan);
+  box-shadow:0 0 0 4px rgba(0,200,232,0.3);
+  animation:pulse-node 2s infinite;
+}
+@keyframes pulse-node {
+  0%,100%{box-shadow:0 0 0 4px rgba(0,200,232,0.3)}
+  50%{box-shadow:0 0 0 8px rgba(0,200,232,0.1)}
+}
+.stop-content {
+  flex:1; background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:12px 14px; margin-bottom:10px;
+  transition:all .2s;
+}
+.stop-content:active { background:var(--card2); }
+.stop-content.expanded { border-color:rgba(0,200,232,0.3); }
+.stop-header { display:flex; align-items:center; justify-content:space-between; }
+.stop-num { font-size:10px; color:var(--muted); margin-bottom:3px; }
+.stop-name-text { font-size:13px; font-weight:600; }
+.stop-eta-badge {
+  font-family:'Syne',sans-serif; font-size:13px; font-weight:700;
+  padding:4px 10px; border-radius:20px;
+}
+.stop-eta-badge.arrived { background:rgba(0,232,160,0.15); color:var(--green); }
+.stop-eta-badge.soon { background:rgba(255,184,48,0.15); color:var(--amber); }
+.stop-eta-badge.coming { background:rgba(0,200,232,0.15); color:var(--cyan); }
+.stop-eta-badge.offline { background:rgba(107,130,168,0.15); color:var(--muted); }
+
+.stop-expanded-content {
+  margin-top:10px; padding-top:10px;
+  border-top:1px solid var(--border); display:none;
+}
+.stop-content.expanded .stop-expanded-content { display:block; }
+.sched-row { display:flex; gap:8px; flex-wrap:wrap; }
+.sched-chip {
+  font-size:11px; padding:4px 10px; border-radius:8px;
+  background:rgba(255,255,255,0.06); color:var(--muted);
+}
+
+/* ─── SERVICES PAGE ─── */
+.service-detail {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; overflow:hidden; margin-bottom:12px; cursor:pointer;
+}
+.service-detail-header {
+  padding:18px; display:flex; align-items:center; gap:14px;
+}
+.service-detail-icon {
+  width:52px; height:52px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0;
+}
+.service-detail-body { padding:0 18px 18px; display:none; }
+.service-detail.open .service-detail-body { display:block; }
+.service-detail.open .service-chevron { transform:rotate(180deg); }
+.service-chevron { margin-left:auto; color:var(--muted); transition:transform .2s; }
+
+.feature-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+.feature-list li { display:flex; align-items:flex-start; gap:10px; font-size:13px; color:rgba(240,246,255,0.8); }
+.feature-list li::before { content:'→'; color:var(--cyan); font-weight:700; flex-shrink:0; margin-top:1px; }
+
+.contact-card {
+  background: linear-gradient(135deg, rgba(0,200,232,0.1), rgba(0,168,200,0.05));
+  border:1px solid rgba(0,200,232,0.25); border-radius:20px; padding:20px; margin-top:4px;
+}
+.contact-title { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; margin-bottom:14px; }
+.contact-btn {
+  display:flex; align-items:center; gap:12px;
+  background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 14px;
+  margin-bottom:8px; cursor:pointer; transition:all .2s; text-decoration:none; color:var(--white);
+}
+.contact-btn:active { background:rgba(255,255,255,0.1); }
+.contact-btn-icon { font-size:18px; }
+.contact-btn-text { flex:1; }
+.contact-btn-label { font-size:11px; color:var(--muted); }
+.contact-btn-val { font-size:13px; font-weight:500; }
+
+/* ─── ALERTS PANEL ─── */
+.alerts-panel {
+  position:fixed; inset:0; z-index:999;
+  background:rgba(10,22,40,0.95); backdrop-filter:blur(20px);
+  transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  padding: calc(var(--safe-top) + 16px) 16px calc(16px + var(--safe-bottom));
+  max-width:430px; margin:0 auto;
+}
+.alerts-panel.open { transform:translateX(0); }
+.alerts-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.alerts-title { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; }
+.close-btn {
+  width:36px; height:36px; border-radius:10px; background:var(--card);
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+.alert-item {
+  background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px;
+  border-left:3px solid;
+}
+.alert-item.info { border-color:var(--cyan); }
+.alert-item.warning { border-color:var(--amber); }
+.alert-item.success { border-color:var(--green); }
+.alert-title { font-size:13px; font-weight:600; margin-bottom:4px; }
+.alert-body { font-size:12px; color:var(--muted); line-height:1.5; }
+.alert-time { font-size:10px; color:var(--muted); margin-top:6px; }
+
+/* ─── SPLASH ─── */
+#splash {
+  position:fixed; inset:0; z-index:9999;
+  background:var(--navy);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:20px; transition:opacity .5s, transform .5s;
+}
+#splash.hidden { opacity:0; transform:scale(1.05); pointer-events:none; }
+.splash-logo { height:60px; animation:splash-in .6s ease both; }
+.splash-name { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; animation:splash-in .6s .15s ease both; }
+.splash-tagline { font-size:13px; color:var(--muted); animation:splash-in .6s .3s ease both; }
+.splash-loader {
+  width:120px; height:2px; background:rgba(255,255,255,0.1); border-radius:2px;
+  overflow:hidden; animation:splash-in .6s .45s ease both;
+}
+.splash-progress {
+  height:100%; background:var(--cyan); border-radius:2px;
+  animation:load-bar 1.5s .5s ease forwards;
+}
+@keyframes load-bar { from{width:0%} to{width:100%} }
+@keyframes splash-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+/* ─── LEAFLET CUSTOM ─── */
+.leaflet-container { background:#0f1a2e !important; }
+.bus-marker-wrap { position:relative; }
+.bus-marker {
+  width:38px; height:38px; border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--cyan2));
+  border:3px solid white; display:flex; align-items:center;
+  justify-content:center; font-size:18px;
+  box-shadow:0 0 0 4px rgba(0,200,232,0.3), 0 4px 12px rgba(0,0,0,0.4);
+  animation:bus-pulse 3s infinite;
+}
+@keyframes bus-pulse {
+  0%,100%{box-shadow:0 0 0 4px rgba(0,200,232,0.3),0 4px 12px rgba(0,0,0,0.4)}
+  50%{box-shadow:0 0 0 10px rgba(0,200,232,0.1),0 4px 12px rgba(0,0,0,0.4)}
+}
+.stop-marker {
+  width:12px; height:12px; border-radius:50%;
+  background:white; border:2px solid var(--cyan);
+}
+.stop-marker.terminus {
+  width:16px; height:16px;
+  background:var(--cyan); border:3px solid white;
+}
+
+/* ─── MISC ─── */
+.divider { height:1px; background:var(--border); margin:16px 0; }
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-text { font-size:14px; line-height:1.5; }
 </style>
 </head>
 <body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <img class="splash-logo" src="data:image/jpeg;base64,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" alt="AVO">
+  <div class="splash-name">AVO Group</div>
+  <div class="splash-tagline">Movilidad Inteligente · Málaga</div>
+  <div class="splash-loader"><div class="splash-progress"></div></div>
+</div>
+
+<!-- APP -->
 <div id="app">
 
-  <!-- ══ INICIO ══ -->
-  <div id="screen-home" class="screen active">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <img class="logo-img" src="data:image/jpeg;base64,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" alt="AVO Group"/>
-      <div class="ws-pill">
-        <div class="ws-dot" id="wsDot"></div>
-        <span class="ws-txt" id="wsTxt">Conectando</span>
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo-wrap">
+      <img class="logo-img" src="data:image/jpeg;base64,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" alt="AVO">
+      <div>
+        <div class="header-title">AVO Group</div>
+        <div class="header-sub">Movilidad Inteligente</div>
       </div>
     </div>
-    <div class="scroll">
-      <div class="fadein">
-        <div class="hero-card">
-          <div class="hero-line">M135 · Línea interurbana</div>
-          <div class="hero-route">Santa Amalia → Estación de Autobuses Málaga</div>
-          <div id="liveBlock" class="live-block" style="display:none">
-            <div class="bus-bubble">🚌</div>
-            <div class="eta-wrap">
-              <div class="eta-label">Próxima parada en</div>
-              <div class="eta-row">
-                <div class="eta-num" id="etaNum">—</div>
-                <div class="eta-unit">min</div>
-              </div>
-              <div class="eta-stop" id="etaStop"></div>
+    <div class="header-right">
+      <div class="icon-btn" onclick="toggleAlerts()" style="position:relative">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGES -->
+  <div id="pages">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="scroll-content">
+
+        <!-- HERO -->
+        <div class="hero-section">
+          <div class="hero-greeting" id="hero-greeting">Cargando líneas…</div>
+          <div class="hero-title">¿Cuándo llega<br>tu <span>próximo bus</span>?</div>
+
+          <!-- LIVE BUS -->
+          <div class="live-bus-card" id="live-bus-card">
+            <div class="live-badge"><div class="live-dot"></div><span>En Vivo</span></div>
+            <div class="bus-eta-display">
+              <div class="eta-number" id="eta-home">—</div>
+              <div class="eta-unit">min</div>
+            </div>
+            <div class="eta-label">Próximo bus · <strong id="eta-stop-name">Buscando parada más cercana…</strong></div>
+            <div class="progress-track"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+            <div class="bus-info-row">
+              <div class="bus-info-chip"><div class="val" id="chip-speed">—</div><div class="lbl">km/h</div></div>
+              <div class="bus-info-chip"><div class="val" id="chip-line">—</div><div class="lbl">Línea</div></div>
+              <div class="bus-info-chip"><div class="val" id="chip-stops">—</div><div class="lbl">Paradas</div></div>
             </div>
           </div>
-          <div id="offlineBlock" class="offline-block">
-            <div class="emoji">🔴</div>
-            <div class="offline-title">Bus fuera de servicio</div>
-            <div class="offline-sub">Consulta los horarios<br>en la sección de paradas</div>
-          </div>
-          <div class="stats-row" id="statsRow" style="display:none">
-            <div class="stat-box"><div class="stat-v" id="sSpeed">—</div><div class="stat-l">km/h</div></div>
-            <div class="stat-box"><div class="stat-v" id="sVeh">—</div><div class="stat-l">vehículo</div></div>
-            <div class="stat-box"><div class="stat-v" id="sStops">—</div><div class="stat-l">paradas</div></div>
-          </div>
         </div>
 
-        <div class="sec-title">Acciones rápidas</div>
-        <div class="actions">
-          <button class="action-btn" style="background:var(--navy)" onclick="goTab('map')">
-            <span class="ab-icon">🗺</span><span class="ab-lbl">Ver en el mapa</span>
+        <!-- CTA -->
+        <div class="cta-row">
+          <button class="cta-btn primary" onclick="goTab('mapa')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Ver en Mapa
           </button>
-          <button class="action-btn" style="background:var(--accent2)" onclick="goTab('stops')">
-            <span class="ab-icon">📍</span><span class="ab-lbl">Ver paradas</span>
+          <button class="cta-btn secondary" onclick="goTab('paradas')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Horarios
           </button>
         </div>
 
-        <div class="sec-title">Próximas salidas · Santa Amalia</div>
-        <div class="sched-card">
-          <div class="sched-row"><span class="sched-t">6:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">7:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">7:45</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">8:30</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">9:15</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">10:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">10:45</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">11:30</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">12:15</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">13:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
+        <!-- ¿LLEGO? -->
+        <div class="llego-card">
+          <div class="llego-title">🎯 ¿Llego a tiempo?</div>
+          <div class="llego-sub">Toca tu parada y te decimos SÍ / NO / CORRE</div>
+          <div class="llego-stops" id="llego-stops">
+            <div class="stop-pill" onclick="checkLlego(this,'Alhaurín de la Torre')">Alhaurín Centro</div>
+            <div class="stop-pill" onclick="checkLlego(this,'El Romeral')">El Romeral</div>
+            <div class="stop-pill" onclick="checkLlego(this,'Churriana')">Churriana</div>
+            <div class="stop-pill" onclick="checkLlego(this,'Estación Málaga')">Estación</div>
+          </div>
+          <div id="llego-result" style="margin-top:12px;display:none"></div>
         </div>
-        <div style="height:30px"></div>
-      </div>
-    </div>
-  </div>
 
-  <!-- ══ MAPA ══ -->
-  <div id="screen-map" class="screen">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <span style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--white)">M135 · Mapa en tiempo real</span>
-      <div id="mapBadge" style="background:var(--gray3);border-radius:20px;padding:5px 12px;">
-        <span style="font-size:10px;font-weight:700;color:var(--white);letter-spacing:.5px" id="mapBadgeTxt">● OFFLINE</span>
-      </div>
-    </div>
-    <div id="map-container">
-      <div id="map"></div>
-      <div class="map-bus-card" id="mapBusCard" style="display:none">
-        <span class="mbc-bus">🚌</span>
-        <div class="mbc-info">
-          <div class="mbc-name" id="mbcName">—</div>
-          <div class="mbc-eta" id="mbcEta">—</div>
+        <!-- LÍNEAS -->
+        <div class="section-title">Líneas Regulares</div>
+        <div class="lines-list" id="lines-list">
+          <div class="line-item" onclick="goTab('mapa');setActiveLine('M135')">
+            <div class="line-badge m135">M135</div>
+            <div class="line-info">
+              <div class="line-name">Alhaurín de la Torre — Málaga</div>
+              <div class="line-route">vía Churriana · 31 paradas</div>
+            </div>
+            <div class="line-status">
+              <div class="status-dot" id="dot-M135"></div>
+              <div class="status-text" id="status-M135">Cargando…</div>
+            </div>
+          </div>
+          <div class="line-item" onclick="goTab('mapa');setActiveLine('M170')">
+            <div class="line-badge m170">M170</div>
+            <div class="line-info">
+              <div class="line-name">Pinos de Alhaurín — Málaga Express</div>
+              <div class="line-route">Bus-Express · 14 paradas</div>
+            </div>
+            <div class="line-status">
+              <div class="status-dot" id="dot-M170"></div>
+              <div class="status-text" id="status-M170">Cargando…</div>
+            </div>
+          </div>
+          <div class="line-item" onclick="goTab('mapa');setActiveLine('M143')">
+            <div class="line-badge m143">M143</div>
+            <div class="line-info">
+              <div class="line-name">Alhaurín de la Torre — Teatinos</div>
+              <div class="line-route">Servicio Universitario · 22 paradas</div>
+            </div>
+            <div class="line-status">
+              <div class="status-dot" id="dot-M143"></div>
+              <div class="status-text" id="status-M143">Cargando…</div>
+            </div>
+          </div>
+          <div class="line-item" onclick="goTab('mapa');setActiveLine('MUMFI')">
+            <div class="line-badge mumfi">MUMFI</div>
+            <div class="line-info">
+              <div class="line-name">Alhaurín de la Torre — Alquería</div>
+              <div class="line-route">Transporte a Demanda · 14 paradas</div>
+            </div>
+            <div class="line-status">
+              <div class="status-dot" id="dot-MUMFI"></div>
+              <div class="status-text" id="status-MUMFI">Cargando…</div>
+            </div>
+          </div>
         </div>
-        <div class="live-badge"><span class="live-badge-txt">LIVE</span></div>
+
+        <!-- SERVICES -->
+        <div class="section-title">Más Servicios</div>
+        <div class="services-grid">
+          <div class="service-card school" onclick="goTab('servicios');openService('escolar')">
+            <div class="service-icon">🎒</div>
+            <div class="service-name">Transporte Escolar</div>
+            <div class="service-desc">Colegios, institutos y universidades en Málaga</div>
+          </div>
+          <div class="service-card tour" onclick="goTab('servicios');openService('excursiones')">
+            <div class="service-icon">🌍</div>
+            <div class="service-name">Excursiones</div>
+            <div class="service-desc">Viajes turísticos y rutas a medida</div>
+          </div>
+          <div class="service-card groups" onclick="goTab('servicios');openService('grupos')">
+            <div class="service-icon">👥</div>
+            <div class="service-name">Traslado Grupos</div>
+            <div class="service-desc">Empresas, eventos y congresos</div>
+          </div>
+          <div class="service-card bus" onclick="goTab('servicios');openService('vip')">
+            <div class="service-icon">⭐</div>
+            <div class="service-name">VIP & PMR</div>
+            <div class="service-desc">Servicios exclusivos y accesibilidad</div>
+          </div>
+        </div>
+
       </div>
-      <div class="map-offline" id="mapOfflineCard">Bus no en servicio ahora mismo</div>
+    </div>
+
+    <!-- MAP PAGE -->
+    <div class="page" id="page-mapa" style="display:none;flex-direction:column;">
+      <div style="flex:1;position:relative;">
+        <div id="map"></div>
+        <div class="map-overlay-top">
+          <div class="map-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(107,130,168,1)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Buscar parada o destino…" id="map-search-input">
+          </div>
+          <div class="map-lines-filter">
+            <div class="filter-chip active" onclick="setActiveLine(null)">Todas</div>
+            <div class="filter-chip" onclick="setActiveLine('M135')">M135</div>
+            <div class="filter-chip" onclick="setActiveLine('M170')">M170</div>
+            <div class="filter-chip" onclick="setActiveLine('M143')">M143</div>
+            <div class="filter-chip" onclick="setActiveLine('MUMFI')">MUMFI</div>
+          </div>
+        </div>
+        <div class="map-info-card" id="map-info-card">
+          <div class="map-card-handle" onclick="toggleMapCard()"></div>
+          <div class="map-bus-row">
+            <div class="map-bus-icon">🚌</div>
+            <div>
+              <div class="map-bus-title" id="map-line-title">Línea M135</div>
+              <div class="map-bus-sub" id="map-bus-pos">Localizando bus…</div>
+            </div>
+            <div style="margin-left:auto;text-align:right">
+              <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--cyan)" id="map-eta-val">—</div>
+              <div style="font-size:10px;color:var(--muted)">min próxima</div>
+            </div>
+          </div>
+          <div class="next-stops" id="next-stops-scroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOPS PAGE -->
+    <div class="page" id="page-paradas" style="display:none">
+      <div class="scroll-content">
+        <div class="stop-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(107,130,168,1)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Buscar parada…" id="stop-search-input" oninput="filterStops(this.value)">
+        </div>
+        <div class="section-title" style="margin-bottom:8px"><span id="stops-line-title">M135</span> · <span style="color:var(--cyan)" id="stops-status-text">Cargando…</span></div>
+        <div class="stops-timeline" id="stops-list"></div>
+      </div>
+    </div>
+
+    <!-- SERVICES PAGE -->
+    <div class="page" id="page-servicios" style="display:none">
+      <div class="scroll-content">
+
+        <div class="section-title">Nuestros Servicios</div>
+
+        <div class="service-detail" id="sd-escolar">
+          <div class="service-detail-header" onclick="toggleService('escolar')">
+            <div class="service-detail-icon" style="background:rgba(255,184,48,0.15)">🎒</div>
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Transporte Escolar</div>
+              <div style="font-size:12px;color:var(--muted)">Colegios, institutos y universidades</div>
+            </div>
+            <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="service-detail-body">
+            <ul class="feature-list">
+              <li>Transporte diario a colegios, institutos y universidades en toda Málaga</li>
+              <li>Vehículos modernos con máxima seguridad y confort para los estudiantes</li>
+              <li>Colaboración con AMPAS, jefes de estudios y asociaciones educativas</li>
+              <li>Excursiones escolares: museos, teatros, eventos deportivos, espacios naturales</li>
+              <li>Viajes de fin de curso adaptados a todas las edades y necesidades</li>
+              <li>Conductores profesionales con formación específica en transporte escolar</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="service-detail" id="sd-excursiones">
+          <div class="service-detail-header" onclick="toggleService('excursiones')">
+            <div class="service-detail-icon" style="background:rgba(0,232,160,0.15)">🌍</div>
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Excursiones y Viajes</div>
+              <div style="font-size:12px;color:var(--muted)">Turismo, circuitos y rutas</div>
+            </div>
+            <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="service-detail-body">
+            <ul class="feature-list">
+              <li>Rutas turísticas por la Costa del Sol y resto de España</li>
+              <li>Circuitos nacionales e internacionales con guía especializado</li>
+              <li>Turismo de golf: traslados a los mejores campos de la Costa del Sol</li>
+              <li>Visitas a monumentos, eventos culturales y espacios naturales</li>
+              <li>Autocares VIP con WiFi, climatización y máximo confort</li>
+              <li>Presupuesto personalizado sin compromiso</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="service-detail" id="sd-grupos">
+          <div class="service-detail-header" onclick="toggleService('grupos')">
+            <div class="service-detail-icon" style="background:rgba(167,139,250,0.15)">👥</div>
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Traslado de Grupos</div>
+              <div style="font-size:12px;color:var(--muted)">Empresas, congresos y eventos</div>
+            </div>
+            <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="service-detail-body">
+            <ul class="feature-list">
+              <li>Lanzaderas aeropuerto, puerto y estación a hoteles de Málaga</li>
+              <li>Traslados a congresos, incentivos y eventos corporativos</li>
+              <li>Servicios MICE (Meetings, Incentives, Conferences, Exhibitions)</li>
+              <li>Transportista oficial del Málaga C.F.</li>
+              <li>Flota de 50 vehículos: desde 9 hasta 71 pasajeros</li>
+              <li>Cobertura nacional e internacional (Grupo Eurorutas y Stars)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="service-detail" id="sd-vip">
+          <div class="service-detail-header" onclick="toggleService('vip')">
+            <div class="service-detail-icon" style="background:rgba(0,200,232,0.15)">⭐</div>
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">VIP & Accesibilidad</div>
+              <div style="font-size:12px;color:var(--muted)">Servicios exclusivos y PMR</div>
+            </div>
+            <svg class="service-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="service-detail-body">
+            <ul class="feature-list">
+              <li>Vehículos VIP con servicio exclusivo y atención personalizada</li>
+              <li>Autocares adaptados para personas con movilidad reducida (PMR)</li>
+              <li>TeatroBus: experiencia teatral a bordo de un autocar itinerante</li>
+              <li>Instalaciones 100% sostenibles — gestión medioambiental responsable</li>
+              <li>Certificaciones de calidad auditadas: ISO y estándares europeos</li>
+              <li>Puntuación media de satisfacción: 9.2 / 10 (1.296 encuestas)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- CONTACT -->
+        <div class="contact-card">
+          <div class="contact-title">📞 Contactar con AVO Group</div>
+          <a class="contact-btn" href="tel:952433523">
+            <div class="contact-btn-icon">📱</div>
+            <div class="contact-btn-text">
+              <div class="contact-btn-label">Teléfono</div>
+              <div class="contact-btn-val">952 433 523</div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+          <a class="contact-btn" href="/cdn-cgi/l/email-protection#a4c7cbc9c1d6c7cdc5c8e4c5d2cbc3d6cbd1d48ac1d7">
+            <div class="contact-btn-icon">✉️</div>
+            <div class="contact-btn-text">
+              <div class="contact-btn-label">Email</div>
+              <div class="contact-btn-val"><span class="__cf_email__" data-cfemail="70131f1d15021319111c3011061f17021f05005e1503">[email&#160;protected]</span></div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+          <a class="contact-btn" href="https://avogroup.es" target="_blank">
+            <div class="contact-btn-icon">🌐</div>
+            <div class="contact-btn-text">
+              <div class="contact-btn-label">Web</div>
+              <div class="contact-btn-val">avogroup.es</div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+          <div class="contact-btn" style="margin-bottom:0">
+            <div class="contact-btn-icon">📍</div>
+            <div class="contact-btn-text">
+              <div class="contact-btn-label">Dirección</div>
+              <div class="contact-btn-val">Ctra. Churriana–Cártama A-7052 km 1,3 · Alhaurín de la Torre</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /pages -->
+
+  <!-- TAB BAR -->
+  <div id="tabbar">
+    <div class="tab active" id="tab-home" onclick="goTab('home')">
+      <div class="tab-indicator"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="tab" id="tab-mapa" onclick="goTab('mapa')">
+      <div class="tab-indicator"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      <span>Mapa</span>
+    </div>
+    <div class="tab" id="tab-paradas" onclick="goTab('paradas')">
+      <div class="tab-indicator"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Paradas</span>
+    </div>
+    <div class="tab" id="tab-servicios" onclick="goTab('servicios')">
+      <div class="tab-indicator"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span>Servicios</span>
     </div>
   </div>
 
-  <!-- ══ PARADAS ══ -->
-  <div id="screen-stops" class="screen">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <span style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--white)" id="stopsTitleTxt">Paradas · M135</span>
-      <span id="stopsLiveBadge" style="font-size:11px;color:var(--green);font-weight:600;display:none">⚡ Tiempo real</span>
-    </div>
-    <div class="scroll">
-      <div class="stops-list" id="stopsList"></div>
+</div><!-- /app -->
+
+<!-- ALERTS PANEL -->
+<div class="alerts-panel" id="alerts-panel">
+  <div class="alerts-header">
+    <div class="alerts-title">Alertas</div>
+    <div class="close-btn" onclick="toggleAlerts()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </div>
   </div>
-
-  <!-- ══ TAB BAR ══ -->
-  <div class="tabbar">
-    <button class="tab active" id="tab-home" onclick="goTab('home')">
-      <span class="tab-icon">🏠</span>
-      <span class="tab-lbl">Inicio</span>
-      <div class="tab-ind"></div>
-    </button>
-    <button class="tab" id="tab-map" onclick="goTab('map')">
-      <span class="tab-icon">🗺</span>
-      <span class="tab-lbl">Mapa</span>
-      <div class="tab-ind"></div>
-    </button>
-    <button class="tab" id="tab-stops" onclick="goTab('stops')">
-      <span class="tab-icon">📍</span>
-      <span class="tab-lbl">Paradas</span>
-      <div class="tab-ind"></div>
-    </button>
+  <div class="alert-item success">
+    <div class="alert-title">🚌 Bus M135 en servicio</div>
+    <div class="alert-body">El servicio M135 opera con normalidad hoy. Tiempo estimado de espera actualizado en tiempo real.</div>
+    <div class="alert-time">Hace 2 minutos</div>
+  </div>
+  <div class="alert-item warning">
+    <div class="alert-title">⚠️ Posible retraso en Churriana</div>
+    <div class="alert-body">Tráfico denso en la A-7052. El bus puede llegar con 3-5 minutos de retraso en las paradas de Churriana.</div>
+    <div class="alert-time">Hace 8 minutos</div>
+  </div>
+  <div class="alert-item info">
+    <div class="alert-title">ℹ️ Horario especial Semana Santa</div>
+    <div class="alert-body">Del 13 al 20 de abril se aplicará el horario especial de festivos en todas las líneas regulares.</div>
+    <div class="alert-time">Hace 1 hora</div>
   </div>
 </div>
 
-<script>
-const BACKEND = 'http://10.10.51.234:3000';
-const WS_URL  = 'ws://10.10.51.234:3000/ws';
-const TABS    = ['home','map','stops'];
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const BACKEND = 'https://avo-bus-backend-production.up.railway.app';
+const WS_URL  = 'wss://avo-bus-backend-production.up.railway.app/ws';
 
-let lineData   = null;
-let vehicle    = null;
-let mapObj     = null;
-let busMarker  = null;
-let routeLayer = null;
-let stopMarkers= [];
-let selStop    = null;
-let mapInited  = false;
+// ─── SPLASH ───────────────────────────────────────────────
+setTimeout(() => {
+  document.getElementById('splash').classList.add('hidden');
+  initApp();
+}, 2200);
+
+// ─── NAVIGATION ───────────────────────────────────────────
 let currentTab = 'home';
+let mapInitialized = false;
 
-// ── Tab navigation ──────────────────────────────────────────────────────────
-function goTab(id) {
-  TABS.forEach(t => {
-    document.getElementById('screen-'+t).classList.toggle('active', t===id);
-    document.getElementById('tab-'+t).classList.toggle('active', t===id);
-  });
-  currentTab = id;
-  if (id==='map' && !mapInited) initMap();
-  if (id==='stops') renderStops();
-}
+function goTab(name) {
+  document.querySelectorAll('.page').forEach(p => { p.style.display='none'; p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
 
-// ── Init map ────────────────────────────────────────────────────────────────
-function initMap() {
-  mapInited = true;
-  mapObj = L.map('map', { zoomControl: false, attributionControl: false }).setView([36.685,-4.515], 11);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(mapObj);
-  L.control.zoom({ position:'bottomright' }).addTo(mapObj);
-  if (lineData) drawMap();
-}
+  const page = document.getElementById('page-' + name);
+  const tab  = document.getElementById('tab-' + name);
+  if (!page || !tab) return;
 
-function drawMap() {
-  if (!mapObj) return;
-  const stops = lineData.stops || [];
-  const route = lineData.route || [];
-
-  if (routeLayer) mapObj.removeLayer(routeLayer);
-  const pts = route.length > 0 ? route.map(p=>[p.lat,p.lon]) : stops.map(s=>[s.lat,s.lon]);
-  if (pts.length > 0) {
-    routeLayer = L.polyline(pts, { color:'#0F3460', weight:5, opacity:.9 }).addTo(mapObj);
-    mapObj.fitBounds(pts, { padding:[30,30] });
+  if (name === 'mapa') {
+    page.style.display = 'flex';
+  } else {
+    page.style.display = 'block';
   }
+  page.classList.add('active');
+  tab.classList.add('active');
+  currentTab = name;
 
-  stopMarkers.forEach(m => mapObj.removeLayer(m));
-  stopMarkers = [];
-  stops.forEach((s,i) => {
-    const big = i===0 || i===stops.length-1;
-    const icon = L.divIcon({
-      html: `<div style="width:${big?16:9}px;height:${big?16:9}px;border-radius:50%;background:${big?'#0F3460':'white'};border:2.5px solid #0F3460;box-shadow:0 2px 6px rgba(0,0,0,.2)"></div>`,
-      className:'', iconSize:[big?16:9,big?16:9], iconAnchor:[big?8:4.5,big?8:4.5]
-    });
-    stopMarkers.push(L.marker([s.lat,s.lon],{icon}).addTo(mapObj).bindPopup(`<b>${s.nombre}</b><br>Parada ${s.orden}`));
-  });
-
-  updateBusOnMap();
+  if (name === 'mapa' && !mapInitialized) {
+    setTimeout(initMap, 100);
+    mapInitialized = true;
+  }
 }
 
-function updateBusOnMap() {
-  if (!mapObj || !vehicle?.isOnline) {
-    if (busMarker) { mapObj && mapObj.removeLayer(busMarker); busMarker=null; }
+// ─── STOPS DATA ───────────────────────────────────────────
+let stopsData = [];
+let vehicleData = null;
+let etaData = {};
+
+const STOPS_FALLBACK = [
+  "Santa Amalia","Urbanización El Romeral","Huerta del Ciprés","El Tomillar",
+  "Avenida del Mediterráneo","Los Almendros","Parque Sur","El Pinar",
+  "Alhaurín de la Torre — Centro","Plaza de España","Calle Real",
+  "El Olivar","Las Lagunas","Churriana — Entrada","Churriana — Centro",
+  "Churriana — Salida","Polígono Industrial","El Mayorazgo","Campanillas",
+  "Teatinos — Universidad","Teatinos — Metro","Ciudad Jardín",
+  "El Palo","Huelin","Centro — Alameda","Paseo del Parque",
+  "Estación de María Zambrano","Pasaje Chinitas","Plaza de la Marina",
+  "Muelle Uno","Estación Autobuses Málaga"
+];
+
+// ─── INIT ─────────────────────────────────────────────────
+async function initApp() {
+  loadStopsPage();
+  connectWS();
+  fetchVehicleData();
+  setInterval(fetchVehicleData, 8000);
+}
+
+// ─── MULTI-LINE STATE ─────────────────────────────────────────────────────────
+let allVehicles = {};
+let activeLine = 'M135';
+const LINE_COLORS = { M135:'#00C8E8', M170:'#00E8A0', M143:'#FFB830', MUMFI:'#A78BFA' };
+const LINE_NAMES = {
+  M135:'M-135 · Alhaurín — Málaga',
+  M170:'M-170 · Pinos Alhaurín — Málaga Express',
+  M143:'M-143 · Alhaurín — Teatinos',
+  MUMFI:'MUMFI · Alhaurín — Alquería'
+};
+
+function setActiveLine(lineId) {
+  if (!lineId) lineId = 'M135';
+  activeLine = lineId;
+  // Update filter chips
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  const chips = document.querySelectorAll('.filter-chip');
+  const names = [null,'M135','M170','M143','MUMFI'];
+  chips.forEach((c,i) => { if(names[i]===lineId||(lineId==='M135'&&i===0)) c.classList.add('active'); });
+  // Update map title
+  const titleEl = document.getElementById('map-line-title');
+  if (titleEl) titleEl.textContent = 'Línea ' + lineId;
+  // Update stops page
+  const stopsTitle = document.getElementById('stops-line-title');
+  if (stopsTitle) stopsTitle.textContent = lineId;
+  // Reload stops for this line
+  loadStopsPage(lineId);
+  // Update bus on map
+  if (allVehicles[lineId]) updateMapBus(allVehicles[lineId]);
+}
+
+async function fetchVehicleData() {
+  try {
+    const r = await fetch(BACKEND + '/vehicles');
+    const d = await r.json();
+    if (d && d.vehicles) {
+      d.vehicles.forEach(v => {
+        allVehicles[v.lineId] = v;
+        // Update line status dots
+        const dot = document.getElementById('dot-' + v.lineId);
+        const stat = document.getElementById('status-' + v.lineId);
+        if (dot && stat) {
+          if (v.isOnline) {
+            dot.className = 'status-dot active';
+            stat.className = 'status-text active';
+            stat.textContent = 'En servicio';
+          } else {
+            dot.className = 'status-dot inactive';
+            stat.className = 'status-text inactive';
+            stat.textContent = 'Sin servicio';
+          }
+        }
+      });
+      // Update greeting
+      const onlineLines = d.vehicles.filter(v=>v.isOnline).map(v=>v.lineId).join(', ');
+      const greetEl = document.getElementById('hero-greeting');
+      if (greetEl) greetEl.textContent = onlineLines ? `En servicio: ${onlineLines}` : 'Sin servicio activo';
+      // Update home with active line
+      const activeVehicle = allVehicles[activeLine];
+      if (activeVehicle && activeVehicle.isOnline) {
+        vehicleData = activeVehicle;
+        updateHomeETA(activeVehicle);
+        updateMapBus(activeVehicle);
+        updateStopsETA(activeVehicle);
+      } else {
+        setOfflineState();
+      }
+      // Place all bus markers on map
+      d.vehicles.filter(v=>v.isOnline).forEach(v => updateMapBus(v, v.lineId !== activeLine));
+    }
+  } catch(e) {
+    setOfflineState();
+  }
+}
+
+function setOfflineState() {
+  document.getElementById('eta-home').textContent = '—';
+  document.getElementById('eta-stop-name').textContent = 'Sin conexión con el servidor';
+  document.getElementById('m135-dot').className = 'status-dot inactive';
+  document.getElementById('m135-status').textContent = 'Fuera de servicio';
+  document.getElementById('m135-status').className = 'status-text inactive';
+}
+
+// ─── HOME ETA ─────────────────────────────────────────────
+function updateHomeETA(data) {
+  const etas = data.etas || [];
+  if (etas.length === 0) { setOfflineState(); return; }
+
+  const next = etas[0];
+  const mins = Math.max(0, Math.round((next.eta - Date.now()) / 60000));
+  document.getElementById('eta-home').textContent = mins;
+  document.getElementById('eta-stop-name').textContent = next.stopName || 'Próxima parada';
+  document.getElementById('chip-speed').textContent = Math.round(data.speedKmh || 0);
+  document.getElementById('chip-line').textContent = data.lineId || activeLine;
+  document.getElementById('chip-stops').textContent = etas.length;
+
+  // progress
+  const total = etas.length + 1;
+  const done = 1;
+  document.getElementById('progress-bar').style.width = Math.round((done/total)*100) + '%';
+}
+
+// ─── ¿LLEGO? ──────────────────────────────────────────────
+function checkLlego(el, stopName) {
+  document.querySelectorAll('.stop-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+
+  const result = document.getElementById('llego-result');
+  result.style.display = 'block';
+
+  if (!vehicleData || !vehicleData.etas || !vehicleData.isOnline) {
+    result.innerHTML = `<div style="background:rgba(107,130,168,0.15);border-radius:12px;padding:12px;font-size:13px;color:var(--muted)">⚡ Sin datos en tiempo real ahora mismo</div>`;
     return;
   }
-  const icon = L.divIcon({
-    html:'<div style="width:40px;height:40px;border-radius:50%;background:#0F3460;display:flex;align-items:center;justify-content:center;font-size:20px;border:3px solid white;box-shadow:0 4px 14px rgba(15,52,96,.6)">🚌</div>',
-    className:'', iconSize:[40,40], iconAnchor:[20,20]
-  });
-  if (busMarker) busMarker.setLatLng([vehicle.lat, vehicle.lon]);
-  else { busMarker = L.marker([vehicle.lat,vehicle.lon],{icon,zIndexOffset:1000}).addTo(mapObj); }
-}
 
-// ── Render stops list ───────────────────────────────────────────────────────
-function renderStops() {
-  const stops = lineData?.stops || [];
-  const el    = document.getElementById('stopsList');
-  el.innerHTML = '';
-  document.getElementById('stopsTitleTxt').textContent = stops.length + ' paradas · M135';
-  document.getElementById('stopsLiveBadge').style.display = vehicle?.isOnline ? 'inline' : 'none';
+  const eta = vehicleData.etas.find(e => e.stopName && e.stopName.includes(stopName.split(' ')[0]));
+  const mins = eta ? Math.max(0, Math.round((eta.eta - Date.now()) / 60000)) : null;
+  const walkMins = 3; // TODO: usar GPS
 
-  stops.forEach((s,i) => {
-    const eta  = vehicle?.etas?.[i];
-    const psd  = eta?.status==='passed';
-    const nxt  = eta?.status==='next';
-    const last = i===stops.length-1;
-    const isSel= selStop===i;
-
-    const div = document.createElement('div');
-    div.className = 'stop-item' + (nxt?' nxt':'') + (psd?' psd':'') + (isSel?' sel':'');
-    
-    let etaHTML = '';
-    if (!vehicle?.isOnline) etaHTML = '<div class="eta-tag et-none"><span>—</span></div>';
-    else if (psd)            etaHTML = '<div class="eta-tag et-psd"><span>✓</span></div>';
-    else if (nxt)            etaHTML = `<div class="eta-tag et-nxt"><span>${eta.etaMinutes===0?'¡Ya!':eta.etaMinutes+'min'}</span></div>`;
-    else if (eta)            etaHTML = `<div class="eta-tag et-live"><span>${eta.etaMinutes}min</span></div>`;
-
-    div.innerHTML = `
-      <div class="tl">
-        <div class="tl-dot${nxt?' nxt':psd?' psd':''}"></div>
-        ${!last?`<div class="tl-line${psd?' psd':''}"></div>`:''}
-      </div>
-      <div class="stop-info">
-        <div class="stop-name${psd?' psd':''}">${s.nombre}</div>
-        <div class="stop-num">Parada ${s.orden}</div>
-        ${isSel && s.hora ? `<div class="stop-hora">🕐 Hora aprox: ${s.hora}</div>` : ''}
-      </div>
-      ${etaHTML}`;
-    
-    div.onclick = () => {
-      selStop = (selStop===i) ? null : i;
-      renderStops();
-    };
-    el.appendChild(div);
-  });
-}
-
-// ── Update UI with vehicle data ─────────────────────────────────────────────
-function updateVehicle(v) {
-  vehicle = v;
-  const live = v?.isOnline;
-
-  // ws indicator
-  document.getElementById('wsDot').className = 'ws-dot' + (live?' live':'');
-  document.getElementById('wsTxt').textContent = live ? 'Tiempo real' : 'Sin señal';
-
-  // home screen
-  document.getElementById('liveBlock').style.display   = live ? 'flex' : 'none';
-  document.getElementById('offlineBlock').style.display = live ? 'none' : 'block';
-  document.getElementById('statsRow').style.display     = live ? 'grid' : 'none';
-
-  if (live) {
-    const nxt = v.etas?.find(e=>e.status==='next');
-    document.getElementById('etaNum').textContent  = nxt ? (nxt.etaMinutes===0?'<1':nxt.etaMinutes) : '...';
-    document.getElementById('etaStop').textContent = nxt?.stopNombre || '';
-    document.getElementById('sSpeed').textContent  = v.speedKmh;
-    document.getElementById('sVeh').textContent    = '#'+v.vehicleId;
-    document.getElementById('sStops').textContent  = lineData?.stops?.length || '—';
-
-    // map badge
-    document.getElementById('mapBadge').style.background = 'var(--green)';
-    document.getElementById('mapBadgeTxt').textContent   = '● EN RUTA';
-    document.getElementById('mapBusCard').style.display  = 'flex';
-    document.getElementById('mapOfflineCard').style.display = 'none';
-    document.getElementById('mbcName').textContent = `Bus #${v.vehicleId} · ${v.speedKmh} km/h`;
-    const nxtMap = v.etas?.find(e=>e.status==='next');
-    document.getElementById('mbcEta').textContent = nxtMap ? `Próxima: ${nxtMap.stopNombre} · ${nxtMap.etaMinutes} min` : '';
-
-    // live dot on tab
-    let ld = document.querySelector('.live-dot');
-    if (!ld) { ld = document.createElement('div'); ld.className='live-dot'; document.getElementById('tab-map').appendChild(ld); }
-  } else {
-    document.getElementById('mapBadge').style.background = 'var(--gray3)';
-    document.getElementById('mapBadgeTxt').textContent   = '● OFFLINE';
-    document.getElementById('mapBusCard').style.display  = 'none';
-    document.getElementById('mapOfflineCard').style.display = 'block';
-    document.querySelector('.live-dot')?.remove();
+  if (mins === null) {
+    result.innerHTML = `<div style="background:rgba(107,130,168,0.15);border:1px solid rgba(107,130,168,0.2);border-radius:12px;padding:14px;font-size:13px;color:var(--muted)">📍 Parada no encontrada en el recorrido actual</div>`;
+    return;
   }
 
-  updateBusOnMap();
-  if (currentTab==='stops') renderStops();
+  let color, icon, msg;
+  if (mins <= walkMins) { color='var(--red)'; icon='🏃'; msg=`<strong>¡CORRE!</strong> El bus llega en ${mins} min y estás a ${walkMins} min andando`; }
+  else if (mins <= walkMins + 3) { color='var(--amber)'; icon='⚡'; msg=`<strong>Sal ya</strong> — llegas justo. Bus en ${mins} min, tú en ${walkMins} min`; }
+  else { color='var(--green)'; icon='✅'; msg=`<strong>¡Llegas!</strong> Bus en ${mins} min · tienes ${mins - walkMins} min de margen`; }
+
+  result.innerHTML = `<div style="background:rgba(0,0,0,0.2);border:1px solid ${color}33;border-radius:12px;padding:14px;font-size:13px;color:${color};display:flex;align-items:flex-start;gap:10px"><span style="font-size:20px">${icon}</span><div>${msg}</div></div>`;
 }
 
-// ── WebSocket ───────────────────────────────────────────────────────────────
+// ─── MAP ──────────────────────────────────────────────────
+let map, routeLayer;
+
+function initMap() {
+  map = L.map('map', { zoomControl:false, attributionControl:false })
+    .setView([36.67, -4.52], 11);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom:19
+  }).addTo(map);
+
+  L.control.zoom({ position:'bottomright' }).addTo(map);
+
+  // Load route + stops from backend
+  fetch(BACKEND + '/lines/' + activeLine).then(r=>r.json()).then(data => {
+    if (data.routePoints && data.routePoints.length) {
+      const coords = data.routePoints.map(p => [p.lat, p.lng]);
+      routeLayer = L.polyline(coords, { color:'#00c8e8', weight:3, opacity:0.8 }).addTo(map);
+      map.fitBounds(routeLayer.getBounds(), { padding:[60,60] });
+    }
+    if (data.stops && data.stops.length) {
+      stopsData = data.stops;
+      data.stops.forEach((s,i) => {
+        const isTerminus = i === 0 || i === data.stops.length-1;
+        const el = document.createElement('div');
+        el.className = 'stop-marker' + (isTerminus ? ' terminus' : '');
+        L.marker([s.lat, s.lng], { icon: L.divIcon({ html: el, className:'', iconSize:isTerminus?[16,16]:[12,12], iconAnchor:isTerminus?[8,8]:[6,6] }) })
+          .addTo(map)
+          .bindPopup(`<b>${s.name}</b><br>Parada ${i+1}`);
+      });
+      renderStopsList(data.stops);
+    }
+  }).catch(()=>{
+    renderStopsList(STOPS_FALLBACK.map((n,i)=>({name:n,lat:36.67,lng:-4.52})));
+  });
+
+  if (vehicleData) updateMapBus(vehicleData);
+}
+
+// placeBusMarker replaced by updateMapBus
+
+const busMarkers = {};
+
+function updateMapBus(data, secondary) {
+  if (!data) return;
+  const lat = data.lat || (data.position && data.position.lat);
+  const lon = data.lon || (data.position && data.position.lng);
+  const speed = data.speedKmh || (data.position && data.position.speed) || 0;
+  const lineId = data.lineId || activeLine;
+  const color = LINE_COLORS[lineId] || '#00C8E8';
+
+  if (lat && lon && map) {
+    if (busMarkers[lineId]) {
+      busMarkers[lineId].setLatLng([lat, lon]);
+    } else {
+      const el = document.createElement('div');
+      el.style.cssText = `width:36px;height:36px;border-radius:50%;background:${color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 0 4px ${color}44,0 4px 12px rgba(0,0,0,0.4)`;
+      el.textContent = '🚌';
+      const icon = L.divIcon({ html:el, className:'', iconSize:[36,36], iconAnchor:[18,18] });
+      busMarkers[lineId] = L.marker([lat, lon], {icon}).addTo(map);
+    }
+  }
+
+  // Only update info card for active line
+  if (lineId === activeLine) {
+    document.getElementById('map-bus-pos').textContent =
+      `${lat ? lat.toFixed(4) : '—'}, ${lon ? lon.toFixed(4) : '—'} · ${Math.round(speed)} km/h`;
+    if (data.etas && data.etas.length) {
+      const mins = Math.max(0, Math.round((data.etas[0].eta - Date.now())/60000));
+      document.getElementById('map-eta-val').textContent = mins;
+      const el = document.getElementById('next-stops-scroll');
+      el.innerHTML = data.etas.slice(0,6).map(e => {
+        const m = Math.max(0, Math.round((e.eta - Date.now())/60000));
+        return `<div class="next-stop-card"><div class="ns-name">${e.stopName||'Parada'}</div><div class="ns-eta">${m}<span class="ns-eta-unit"> min</span></div></div>`;
+      }).join('');
+    }
+  }
+}
+
+function toggleMapCard() {
+  document.getElementById('map-info-card').classList.toggle('expanded');
+}
+
+// ─── STOPS PAGE ───────────────────────────────────────────
+function loadStopsPage(lineId) {
+  lineId = lineId || activeLine || 'M135';
+  fetch(BACKEND + '/stops/' + lineId).then(r=>r.json()).then(stops => {
+    if (!Array.isArray(stops)) stops = stops.stops || [];
+    stopsData = stops;
+    renderStopsList(stops);
+    document.getElementById('stops-status-text').textContent = stops.length + ' paradas';
+  }).catch(() => {
+    const stops = STOPS_FALLBACK.map((n,i)=>({name:n,lat:0,lng:0}));
+    stopsData = stops;
+    renderStopsList(stops);
+    document.getElementById('stops-status-text').textContent = '31 paradas';
+  });
+}
+
+const SCHEDULES_LABORABLES = ['6:00','6:45','7:30','8:15','9:00','9:45','10:30','11:15','12:00','12:45','13:30','14:15','15:00','15:45','16:30','17:15','18:00','18:45','19:30','20:15','21:00'];
+
+function renderStopsList(stops) {
+  const container = document.getElementById('stops-list');
+  container.innerHTML = '';
+  stops.forEach((s, i) => {
+    const isFirst = i === 0, isLast = i === stops.length - 1;
+    const circleClass = i === 0 ? 'stop-circle current' : 'stop-circle';
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+    row.innerHTML = `
+      <div class="stop-node"><div class="${circleClass}" id="sc-${i}"></div></div>
+      <div class="stop-content" id="scont-${i}" onclick="toggleStop(${i})">
+        <div class="stop-header">
+          <div>
+            <div class="stop-num">Parada ${i+1} ${isFirst?'· Origen':isLast?'· Destino':''}</div>
+            <div class="stop-name-text">${s.name||s}</div>
+          </div>
+          <div class="stop-eta-badge offline" id="seta-${i}">—</div>
+        </div>
+        <div class="stop-expanded-content">
+          <div class="section-title" style="font-size:10px;margin-bottom:8px">Salidas desde Santa Amalia (Laborables)</div>
+          <div class="sched-row">${SCHEDULES_LABORABLES.map(t=>`<div class="sched-chip">${t}</div>`).join('')}</div>
+        </div>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function toggleStop(i) {
+  const cont = document.getElementById('scont-' + i);
+  cont.classList.toggle('expanded');
+}
+
+function filterStops(q) {
+  const rows = document.querySelectorAll('.stop-row');
+  rows.forEach(row => {
+    const name = row.querySelector('.stop-name-text');
+    if (!name) return;
+    row.style.display = name.textContent.toLowerCase().includes(q.toLowerCase()) ? 'flex' : 'none';
+  });
+}
+
+function updateStopsETA(data) {
+  if (!data.etas) return;
+  data.etas.forEach((eta, i) => {
+    const badge = document.getElementById('seta-' + i);
+    const circle = document.getElementById('sc-' + i);
+    if (!badge) return;
+    const mins = Math.max(0, Math.round((eta.eta - Date.now()) / 60000));
+    if (mins === 0) {
+      badge.textContent = '¡Ya!'; badge.className = 'stop-eta-badge arrived';
+      if (circle) { circle.className = 'stop-circle current'; }
+    } else if (mins <= 5) {
+      badge.textContent = mins + ' min'; badge.className = 'stop-eta-badge soon';
+    } else {
+      badge.textContent = mins + ' min'; badge.className = 'stop-eta-badge coming';
+    }
+  });
+}
+
+// ─── WEBSOCKET ────────────────────────────────────────────
 function connectWS() {
-  const ws = new WebSocket(WS_URL);
-  ws.onopen  = () => { document.getElementById('wsDot').className='ws-dot live'; document.getElementById('wsTxt').textContent='Conectado'; };
-  ws.onclose = () => { document.getElementById('wsDot').className='ws-dot warn'; document.getElementById('wsTxt').textContent='Reconectando...'; setTimeout(connectWS,3000); };
-  ws.onmessage = ({data}) => {
-    const msg = JSON.parse(data);
-    if (msg.type==='init') { const v=msg.data.find(v=>v.lineId==='M135'); if(v) updateVehicle(v); }
-    else if (msg.type==='vehicle:position' && msg.data.lineId==='M135') updateVehicle(msg.data);
-    else if (msg.type==='vehicle:offline') updateVehicle({...vehicle, isOnline:false});
-  };
-}
-
-// ── Load line data ──────────────────────────────────────────────────────────
-async function init() {
   try {
-    const r = await fetch(BACKEND + '/lines/M135');
-    lineData = await r.json();
-    document.getElementById('sStops').textContent = lineData.stops?.length || '—';
-    if (mapInited) drawMap();
-  } catch(e) {}
-  connectWS();
+    const ws = new WebSocket(WS_URL);
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'vehicle:position' && msg.data) {
+          const v = msg.data;
+          allVehicles[v.lineId] = v;
+          const dot = document.getElementById('dot-' + v.lineId);
+          const stat = document.getElementById('status-' + v.lineId);
+          if (dot) dot.className = 'status-dot active';
+          if (stat) { stat.className = 'status-text active'; stat.textContent = 'En servicio'; }
+          if (v.lineId === activeLine) { vehicleData = v; updateHomeETA(v); updateMapBus(v); updateStopsETA(v); }
+          else updateMapBus(v, true);
+        } else if (msg.type === 'vehicle:offline' && msg.data) {
+          const lineId = msg.data.lineId;
+          if (allVehicles[lineId]) allVehicles[lineId].isOnline = false;
+          const dot = document.getElementById('dot-' + lineId);
+          const stat = document.getElementById('status-' + lineId);
+          if (dot) dot.className = 'status-dot inactive';
+          if (stat) { stat.className = 'status-text inactive'; stat.textContent = 'Sin servicio'; }
+          if (lineId === activeLine) setOfflineState();
+        }
+      } catch(err) {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 5000);
+  } catch(e) { setTimeout(connectWS, 5000); }
 }
 
-init();
-</script>
-</body>
-</html>
+// ─── SERVICES ─────────────────────────────────────────────
+function toggleService(name) {
+  const el = document.getElementById('sd-' + name);
+  el.classList.toggle('open');
+}
+function openService(name) {
+  setTimeout(() => {
+    const el = document.getElementById('sd-' + name);
+    if (el) el.classList.add('open');
+    el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 100);
+}
+
+// ─── ALERTS ───────────────────────────────────────────────
+function toggleAlerts() {
+  document.getElementById('alerts-panel').classList.toggle('open');
+}
+
+// ─── MAP FILTER CHIPS ─────────────────────────────────────
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ─── MAP CARD DRAG ────────────────────────────────────────
+const mapCard = document.getElementById('map-info-card');
+if (mapCard) {
+  let startY, startT;
+  mapCard.addEventListener('touchstart', e => { startY = e.touches[0].clientY; startT = mapCard.classList.contains('expanded'); });
