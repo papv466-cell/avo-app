@@ -1,457 +1,2022 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="AVO Bus"/>
-<meta name="theme-color" content="#16213E"/>
-<title>AVO Bus · M135</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#060d1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AVO Bus · Málaga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* ════════════════════════════════════════════════════
+   AVO BUS v6.0 — Design System
+   Font: Syne (display) + Inter (body)
+   Theme: Deep navy + electric cyan + neon green
+   ════════════════════════════════════════════════════ */
 :root {
-  --navy:#0F3460;--navy2:#16213E;--navy3:#0A2447;
-  --accent:#00B4D8;--accent2:#0077A8;
-  --green:#06D6A0;--orange:#FFB703;--red:#EF476F;
-  --white:#fff;--gray1:#F7F8FA;--gray2:#ECEEF2;--gray3:#B0B8C4;--gray4:#6B7280;
-  --text:#1A2332;
-  --safe-top: env(safe-area-inset-top);
-  --safe-bottom: env(safe-area-inset-bottom);
+  --navy:    #060d1a;
+  --navy2:   #0c1929;
+  --navy3:   #112236;
+  --navy4:   #1a3352;
+  --cyan:    #00c8f0;
+  --cyan2:   #00a8cc;
+  --green:   #00e8a0;
+  --amber:   #ffb020;
+  --red:     #ff4060;
+  --purple:  #a855f7;
+  --text:    #f0f6ff;
+  --text2:   #8da8c8;
+  --text3:   #4a6a8a;
+  --border:  rgba(0,200,240,0.12);
+  --border2: rgba(0,200,240,0.06);
+  --glass:   rgba(6,20,38,0.85);
+  --card:    rgba(12,25,41,0.9);
+  --card2:   rgba(17,34,54,0.95);
+  --glow-c:  0 0 20px rgba(0,200,240,0.25);
+  --glow-g:  0 0 20px rgba(0,232,160,0.25);
+  --radius:  16px;
+  --radius2: 22px;
+  --ff-head: 'DM Sans', sans-serif;
+  --ff-body: 'DM Sans', sans-serif;
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--navy2);font-family:'DM Sans',sans-serif;}
 
-/* ── Layout ── */
-#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
-.screen{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.screen.active{display:flex;}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--text); font-family:var(--ff-body); font-size:14px; -webkit-font-smoothing:antialiased; }
 
-/* ── Status bar spacer ── */
-.statusbar{height:var(--safe-top);background:var(--navy2);flex-shrink:0;}
+/* ── SCROLLBAR ─────────────────────────────────────── */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--navy4); border-radius:99px; }
 
-/* ── Header ── */
-.topbar{background:var(--navy2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.logo-img{height:34px;object-fit:contain;}
-.ws-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border-radius:20px;padding:5px 11px;}
-.ws-dot{width:7px;height:7px;border-radius:50%;background:var(--gray3);transition:background .4s;}
-.ws-dot.live{background:var(--green);animation:glow 1.8s infinite;}
-.ws-dot.warn{background:var(--orange);}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(6,214,160,.4)}50%{box-shadow:0 0 0 5px rgba(6,214,160,0)}}
-.ws-txt{font-size:11px;color:rgba(255,255,255,.55);font-weight:500;}
+/* ── SPLASH ─────────────────────────────────────────── */
+#splash {
+  position:fixed; inset:0; z-index:1000;
+  background:var(--navy);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+  animation:splashOut 0.6s ease 2.2s forwards;
+}
+@keyframes splashOut { to { opacity:0; pointer-events:none; } }
+.splash-logo-wrap {
+  width:90px; height:90px; border-radius:24px;
+  background:var(--navy2);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 40px rgba(0,200,240,0.2);
+  animation:splashPulse 1.5s ease infinite;
+}
+@keyframes splashPulse { 50%{box-shadow:0 0 60px rgba(0,200,240,0.4)} }
+.splash-logo-wrap img { width:68px; height:auto; border-radius:8px; }
+.splash-brand { font-family:var(--ff-head); font-size:28px; font-weight:800; letter-spacing:-0.5px; }
+.splash-brand span { color:var(--cyan); }
+.splash-sub { font-size:12px; color:var(--text2); letter-spacing:2px; text-transform:uppercase; margin-top:2px; }
+.splash-loader {
+  width:120px; height:2px; background:var(--navy3); border-radius:99px; overflow:hidden; margin-top:12px;
+}
+.splash-loader-fill {
+  height:100%; background:linear-gradient(90deg,var(--cyan),var(--green));
+  border-radius:99px; animation:load 2s ease forwards;
+}
+@keyframes load { from{width:0} to{width:100%} }
 
-/* ── Scrollable content ── */
-.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.scroll::-webkit-scrollbar{display:none;}
+/* ── APP SHELL ──────────────────────────────────────── */
+#app {
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+  opacity:0; animation:appIn 0.5s ease 2.5s forwards;
+}
+@keyframes appIn { to{opacity:1} }
 
-/* ══════════ INICIO ══════════ */
-.hero-card{margin:14px;border-radius:22px;background:linear-gradient(145deg,var(--navy) 0%,#1a4a7a 100%);padding:22px;box-shadow:0 12px 40px rgba(15,52,96,.5);}
-.hero-line{font-family:'Syne',sans-serif;font-size:11px;color:var(--accent);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
-.hero-route{font-size:14px;color:rgba(255,255,255,.7);font-weight:400;margin-bottom:20px;line-height:1.4;}
+/* ── HEADER ─────────────────────────────────────────── */
+#header {
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:env(safe-area-inset-top,12px) 16px 12px;
+  background:var(--glass);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  position:relative; z-index:100;
+}
+.hdr-logo { display:flex; align-items:center; gap:10px; }
+.hdr-logo img { height:28px; width:auto; }
+.hdr-logo-text { font-family:var(--ff-head); }
+.hdr-logo-name { font-size:15px; font-weight:800; letter-spacing:-0.3px; line-height:1; }
+.hdr-logo-tag { font-size:9px; color:var(--cyan); letter-spacing:2px; text-transform:uppercase; font-weight:500; }
+.hdr-actions { display:flex; gap:8px; }
+.hdr-btn {
+  width:36px; height:36px; border-radius:12px;
+  background:var(--navy3); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text2); transition:all .2s;
+  font-size:16px;
+}
+.hdr-btn:active { transform:scale(0.92); }
+.hdr-btn.active { color:var(--cyan); border-color:rgba(0,200,240,0.4); background:rgba(0,200,240,0.08); }
 
-.live-block{display:flex;align-items:center;gap:18px;margin-bottom:20px;}
-.bus-bubble{width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:34px;flex-shrink:0;animation:breathe 2.5s ease-in-out infinite;}
-@keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,.1)}50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(255,255,255,0)}}
-.eta-wrap{}
-.eta-label{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
-.eta-row{display:flex;align-items:baseline;gap:5px;}
-.eta-num{font-family:'Syne',sans-serif;font-size:58px;font-weight:800;color:var(--white);line-height:1;}
-.eta-unit{font-size:17px;color:rgba(255,255,255,.5);font-weight:500;}
-.eta-stop{font-size:12px;color:var(--orange);font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+/* ── PAGES ──────────────────────────────────────────── */
+#pages { flex:1; overflow:hidden; position:relative; }
+.page { position:absolute; inset:0; overflow-y:auto; display:none; }
+.page.on { display:block; }
+.page-content { padding:0 0 80px; }
 
-.offline-block{text-align:center;padding:24px 0;}
-.offline-block .emoji{font-size:40px;margin-bottom:10px;}
-.offline-title{font-family:'Syne',sans-serif;font-size:17px;color:var(--white);font-weight:700;margin-bottom:5px;}
-.offline-sub{font-size:13px;color:rgba(255,255,255,.45);line-height:1.5;}
+/* ── BOTTOM TABS ────────────────────────────────────── */
+#tabs {
+  flex-shrink:0;
+  display:flex;
+  background:var(--glass); backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  padding:8px 0 env(safe-area-inset-bottom,8px);
+}
+.tab {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:6px 4px; cursor:pointer; color:var(--text3);
+  transition:color .2s;
+}
+.tab.on { color:var(--cyan); }
+.tab-icon { font-size:20px; line-height:1; }
+.tab-lbl { font-size:9px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; }
 
-.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.stat-box{background:rgba(255,255,255,.08);border-radius:12px;padding:10px;text-align:center;}
-.stat-v{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--white);}
-.stat-l{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;}
+/* ── HERO CARD ──────────────────────────────────────── */
+.hero-card {
+  margin:12px 14px 0;
+  background:linear-gradient(135deg, var(--navy2) 0%, var(--navy3) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--radius2);
+  padding:18px;
+  position:relative; overflow:hidden;
+}
+.hero-card::before {
+  content:''; position:absolute; top:-40px; right:-40px;
+  width:160px; height:160px; border-radius:50%;
+  background:radial-gradient(circle, rgba(0,200,240,0.08) 0%, transparent 70%);
+}
+.hero-line-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--ff-head); font-size:11px; font-weight:700;
+  letter-spacing:1.5px; text-transform:uppercase; color:var(--text2);
+  margin-bottom:12px;
+}
+.hero-line-dot { width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:var(--glow-c); }
+.hero-eta-row { display:flex; align-items:baseline; gap:6px; margin-bottom:6px; }
+.hero-eta-num {
+  font-family:'DM Mono', monospace; font-size:60px; font-weight:500;
+  line-height:1; letter-spacing:-2px;
+  background:linear-gradient(135deg, var(--cyan), var(--green));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.hero-eta-unit { font-size:20px; font-weight:600; color:var(--text2); }
+.hero-stop { font-size:14px; font-weight:500; color:var(--text); margin-bottom:12px; }
+.hero-progress-wrap { margin-bottom:12px; }
+.hero-progress-track { height:3px; background:var(--navy4); border-radius:99px; }
+.hero-progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--cyan),var(--green)); transition:width 1s ease; }
+.hero-stats { display:flex; gap:0; border-top:1px solid var(--border2); padding-top:12px; }
+.hero-stat { flex:1; text-align:center; border-right:1px solid var(--border2); }
+.hero-stat:last-child { border-right:none; }
+.hero-stat-val { font-family:var(--ff-head); font-size:17px; font-weight:700; color:var(--cyan); }
+.hero-stat-lbl { font-size:10px; color:var(--text3); letter-spacing:0.5px; margin-top:1px; }
 
-.sec-title{font-size:10px;font-weight:700;color:var(--gray4);text-transform:uppercase;letter-spacing:.8px;padding:18px 16px 10px;}
+/* ── LEAVE BANNER ───────────────────────────────────── */
+#home-leave {
+  display:none; margin:8px 14px 0;
+  background:linear-gradient(135deg,rgba(0,232,160,.08),rgba(0,200,240,.05));
+  border:1px solid rgba(0,232,160,.25);
+  border-radius:14px; padding:12px 16px;
+  font-size:13px; font-weight:600; color:var(--green);
+  text-align:center;
+}
 
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;}
-.action-btn{border:none;border-radius:18px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .15s,opacity .15s;-webkit-appearance:none;}
-.action-btn:active{transform:scale(.96);opacity:.85;}
-.action-btn .ab-icon{font-size:28px;}
-.action-btn .ab-lbl{font-size:13px;font-weight:600;color:var(--white);}
+/* ── NEARBY BANNER ──────────────────────────────────── */
+#nearby-banner {
+  display:none; margin:8px 14px 0;
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:12px 14px;
+  gap:10px;
+  align-items:center;
+}
+.nb-icon { font-size:22px; flex-shrink:0; cursor:pointer; }
+.nb-info { flex:1; min-width:0; }
+.nb-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nb-dist { font-size:11px; color:var(--text2); margin-top:2px; line-height:1.5; }
+.nb-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.nb-eta { font-family:var(--ff-head); font-size:20px; font-weight:800; color:var(--cyan); }
+.go-chip {
+  background:linear-gradient(135deg,var(--cyan),var(--green));
+  color:#060d1a; border-radius:8px;
+  padding:4px 12px; font-size:11px; font-weight:800;
+  cursor:pointer; font-family:var(--ff-head);
+  letter-spacing:0.5px;
+}
 
-.sched-card{margin:0 14px;background:var(--white);border-radius:18px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.06);}
-.sched-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--gray2);}
-.sched-row:last-child{border-bottom:none;}
-.sched-t{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--navy);width:54px;}
-.sched-d{flex:1;font-size:12px;color:var(--gray4);}
-.sched-dur{font-size:11px;color:var(--gray3);}
+/* ── GO PANEL ───────────────────────────────────────── */
+#go-panel {
+  display:none; margin:8px 14px 0;
+  background:linear-gradient(135deg,#061a0e,#07200e);
+  border:1px solid rgba(0,232,160,.3);
+  border-radius:var(--radius); padding:14px 16px;
+}
+.go-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.go-badge { font-family:var(--ff-head); font-size:11px; font-weight:800; color:var(--green); letter-spacing:1.5px; text-transform:uppercase; }
+.go-stop-btn { font-size:10px; color:var(--text3); border:1px solid var(--border); border-radius:6px; padding:3px 9px; cursor:pointer; }
+#go-instruction { font-size:15px; font-weight:700; margin-bottom:4px; }
+#go-sub { font-size:12px; color:var(--text2); margin-bottom:10px; }
+.go-steps { display:flex; flex-direction:column; gap:6px; }
+.go-step { display:flex; align-items:flex-start; gap:10px; font-size:12px; }
+.go-step-num { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--green); color:var(--green); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
+.go-step.done .go-step-num { background:var(--green); color:#060d1a; }
+.go-step.active .go-step-num { background:rgba(0,232,160,.15); animation:goPulse 1.5s ease infinite; }
+@keyframes goPulse { 50%{box-shadow:0 0 0 4px rgba(0,232,160,.2)} }
+.go-progress-bar { height:3px; background:var(--navy4); border-radius:99px; margin-top:10px; }
+.go-progress-fill { height:100%; background:linear-gradient(90deg,var(--green),var(--cyan)); border-radius:99px; transition:width 1s ease; }
 
-/* ══════════ MAPA ══════════ */
-#map-container{flex:1;position:relative;}
-#map{width:100%;height:100%;}
-.map-bus-card{position:absolute;bottom:calc(10px + var(--safe-bottom));left:12px;right:12px;background:var(--white);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:1000;}
-.mbc-bus{font-size:28px;}
-.mbc-info{flex:1;}
-.mbc-name{font-size:14px;font-weight:700;color:var(--text);}
-.mbc-eta{font-size:12px;color:var(--gray4);margin-top:2px;}
-.live-badge{background:var(--green);border-radius:8px;padding:4px 9px;}
-.live-badge-txt{font-size:10px;font-weight:800;color:var(--navy2);letter-spacing:.8px;}
-.map-offline{position:absolute;bottom:calc(10px + var(--safe-bottom));left:12px;right:12px;background:var(--white);border-radius:18px;padding:14px 16px;text-align:center;color:var(--gray4);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:1000;}
+/* ── SECTION LABEL ──────────────────────────────────── */
+.sec-label {
+  font-family:var(--ff-head); font-size:10px; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; color:var(--text3);
+  padding:16px 16px 8px;
+}
 
-/* ══════════ PARADAS ══════════ */
-.stops-list{padding:8px 12px;}
-.stop-item{display:flex;align-items:flex-start;gap:10px;background:var(--white);border-radius:14px;padding:12px 12px;margin-bottom:3px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;border:1.5px solid transparent;}
-.stop-item:active{transform:scale(.98);}
-.stop-item.nxt{background:#FFF8E7;border-color:var(--orange);}
-.stop-item.psd{opacity:.4;}
-.stop-item.sel{background:#EBF5FF;border-color:var(--accent);}
-.tl{display:flex;flex-direction:column;align-items:center;width:14px;padding-top:2px;flex-shrink:0;}
-.tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--navy);background:var(--white);flex-shrink:0;}
-.tl-dot.nxt{width:13px;height:13px;border-radius:50%;background:var(--orange);border-color:var(--orange);}
-.tl-dot.psd{border-color:var(--gray2);}
-.tl-line{width:2px;flex:1;background:var(--navy);opacity:.15;min-height:16px;margin-top:2px;}
-.tl-line.psd{opacity:.06;}
-.stop-info{flex:1;min-width:0;}
-.stop-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.stop-name.psd{color:var(--gray3);}
-.stop-num{font-size:11px;color:var(--gray3);margin-top:1px;}
-.stop-hora{font-size:11px;color:var(--gray4);margin-top:5px;background:var(--gray1);border-radius:6px;padding:4px 7px;display:inline-block;}
-.eta-tag{border-radius:8px;padding:4px 8px;min-width:46px;text-align:center;align-self:center;flex-shrink:0;}
-.eta-tag span{font-size:12px;font-weight:700;}
-.et-none{background:var(--gray2);}  .et-none span{color:var(--gray4);}
-.et-psd{background:#E0FAF2;}        .et-psd span{color:var(--green);}
-.et-nxt{background:var(--orange);}  .et-nxt span{color:var(--navy2);}
-.et-live{background:var(--navy);}   .et-live span{color:var(--white);}
+/* ── TRIP PLANNER ───────────────────────────────────── */
+.trip-wrap { padding:0 14px; }
+.trip-input-row {
+  display:flex; gap:8px; align-items:center;
+  background:var(--navy3); border:1px solid var(--border);
+  border-radius:14px; padding:0 4px 0 14px;
+  transition:border-color .2s;
+}
+.trip-input-row:focus-within { border-color:rgba(0,200,240,.4); box-shadow:0 0 0 3px rgba(0,200,240,.06); }
+.trip-input-row input {
+  flex:1; background:none; border:none; outline:none;
+  color:var(--text); font-size:13px; font-family:var(--ff-body);
+  padding:13px 0;
+}
+.trip-input-row input::placeholder { color:var(--text3); }
+.trip-go-btn {
+  height:36px; padding:0 14px;
+  background:linear-gradient(135deg,var(--cyan),var(--cyan2));
+  color:#060d1a; border-radius:10px; font-weight:700;
+  font-size:13px; cursor:pointer; flex-shrink:0;
+  font-family:var(--ff-head);
+}
+#trip-suggestions { margin-top:6px; }
+.suggestion {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:10px 14px;
+  margin-bottom:4px; cursor:pointer;
+  font-size:12px; color:var(--text2);
+  display:flex; align-items:center; gap:8px;
+  transition:background .15s;
+}
+.suggestion:active { background:var(--navy4); }
 
-/* ══════════ TAB BAR ══════════ */
-.tabbar{display:flex;background:var(--navy2);border-top:1px solid rgba(255,255,255,.08);padding-bottom:var(--safe-bottom);flex-shrink:0;}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 5px;cursor:pointer;position:relative;border:none;background:none;-webkit-appearance:none;}
-.tab-icon{font-size:22px;opacity:.4;transition:opacity .2s;}
-.tab-lbl{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;font-weight:500;transition:color .2s;}
-.tab.active .tab-icon{opacity:1;}
-.tab.active .tab-lbl{color:var(--accent);font-weight:700;}
-.tab-ind{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:2px;background:var(--accent);display:none;}
-.tab.active .tab-ind{display:block;}
-.live-dot{position:absolute;top:7px;right:calc(50% - 22px);width:8px;height:8px;border-radius:50%;background:var(--green);border:2px solid var(--navy2);}
+/* ── TRIP RESULT ────────────────────────────────────── */
+.trip-result-wrap {
+  margin-top:10px; background:var(--card2);
+  border:1px solid var(--border); border-radius:var(--radius);
+  overflow:hidden;
+}
+.trip-result-item {
+  padding:14px 16px;
+  border-bottom:1px solid var(--border2);
+  cursor:pointer; transition:background .15s;
+}
+.trip-result-item:last-child { border-bottom:none; }
+.trip-result-item:active { background:var(--navy4); }
+.tri-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.tri-badge { border-radius:7px; padding:3px 10px; font-size:11px; font-weight:800; font-family:var(--ff-head); }
+.tri-name { font-size:14px; font-weight:700; flex:1; }
+.tri-eta { font-family:var(--ff-head); font-size:20px; font-weight:800; }
+.tri-steps {
+  background:var(--navy3); border-radius:10px; padding:10px 12px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.tri-step { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text2); }
+.tri-step-icon { font-size:14px; width:18px; text-align:center; }
+.tri-step b { color:var(--text); }
 
-/* Fade in */
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.fadein{animation:fadeUp .5s ease both;}
+/* ── LINE CARDS ─────────────────────────────────────── */
+.line-cards { padding:0 14px; display:flex; flex-direction:column; gap:8px; }
+.line-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px;
+  display:flex; align-items:center; gap:12px;
+  cursor:pointer; transition:all .2s;
+  position:relative; overflow:hidden;
+}
+.line-card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+}
+.lc-m135::before { background:var(--cyan); }
+.lc-m170::before { background:var(--green); }
+.lc-m143::before { background:var(--amber); }
+.lc-mumfi::before { background:var(--purple); }
+.lc-badge {
+  width:44px; height:44px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--ff-head); font-size:12px; font-weight:800;
+  flex-shrink:0; letter-spacing:-0.3px;
+}
+.lc-m135 .lc-badge { background:rgba(0,200,240,.12); color:var(--cyan); }
+.lc-m170 .lc-badge { background:rgba(0,232,160,.12); color:var(--green); }
+.lc-m143 .lc-badge { background:rgba(255,176,32,.12); color:var(--amber); }
+.lc-mumfi .lc-badge { background:rgba(168,85,247,.12); color:var(--purple); }
+.lc-info { flex:1; min-width:0; }
+.lc-name { font-size:13px; font-weight:600; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lc-desc { font-size:11px; color:var(--text3); }
+.lc-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.lc-eta-val { font-family:var(--ff-head); font-size:18px; font-weight:800; }
+.lc-status { display:flex; align-items:center; gap:4px; }
+.lc-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.lc-dot.on { background:var(--green); box-shadow:0 0 6px rgba(0,232,160,.5); }
+.lc-dot.off { background:var(--text3); }
+.lc-dot-txt { font-size:10px; font-weight:600; }
+.lc-dot-txt.on { color:var(--green); }
+.lc-dot-txt.off { color:var(--text3); }
+.lc-star { font-size:18px; cursor:pointer; padding:2px; }
+
+/* ── SHARE BTN ──────────────────────────────────────── */
+.share-btn {
+  margin:10px 14px 0;
+  background:var(--navy3); border:1px solid var(--border);
+  border-radius:14px; padding:13px 16px;
+  display:flex; align-items:center; gap:10px;
+  cursor:pointer; font-size:13px; font-weight:600;
+  transition:all .2s;
+}
+.share-btn:active { transform:scale(.98); }
+.share-btn.active { background:rgba(37,211,102,.08); border-color:rgba(37,211,102,.35); color:#25d366; }
+
+/* ── CO₂ BADGE ──────────────────────────────────────── */
+.co2-badge {
+  margin:8px 14px 0;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(135deg,rgba(0,232,160,.06),rgba(0,200,240,.04));
+  border:1px solid rgba(0,232,160,.15);
+  border-radius:14px; padding:12px 16px;
+}
+.co2-left { display:flex; align-items:center; gap:10px; }
+.co2-icon { font-size:24px; }
+.co2-label { font-size:12px; color:var(--text2); }
+.co2-val { font-family:var(--ff-head); font-size:20px; font-weight:800; color:var(--green); }
+.co2-trees { font-size:10px; color:var(--text3); margin-top:1px; }
+
+/* ── FAVORITES ──────────────────────────────────────── */
+.favs-section { padding:0 14px; display:flex; flex-direction:column; gap:6px; }
+
+/* ── MAP PAGE ───────────────────────────────────────── */
+#page-map { display:none; }
+#page-map.on { display:flex; flex-direction:column; }
+#map-wrap { flex:1; position:relative; min-height:0; }
+#map { width:100%; height:100%; }
+.map-line-chips {
+  position:absolute; top:12px; left:12px; right:12px; z-index:400;
+  display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;
+}
+.map-line-chips::-webkit-scrollbar { display:none; }
+.map-chip {
+  flex-shrink:0; padding:7px 14px; border-radius:99px;
+  font-size:12px; font-weight:700; cursor:pointer;
+  font-family:var(--ff-head); letter-spacing:0.5px;
+  border:1.5px solid transparent; backdrop-filter:blur(12px);
+  transition:all .2s;
+  background:rgba(6,13,26,.7); color:var(--text2); border-color:rgba(255,255,255,.15);
+}
+.map-chip.m135 { background:rgba(0,200,240,.15); color:var(--cyan); border-color:rgba(0,200,240,.4); }
+.map-chip.m170 { background:rgba(0,232,160,.15); color:var(--green); border-color:rgba(0,232,160,.4); }
+.map-chip.m143 { background:rgba(255,176,32,.15); color:var(--amber); border-color:rgba(255,176,32,.4); }
+.map-chip.mumfi { background:rgba(168,85,247,.15); color:var(--purple); border-color:rgba(168,85,247,.4); }
+.map-locate-btn {
+  position:absolute; right:12px; bottom:84px; z-index:400;
+  width:44px; height:44px; border-radius:14px;
+  background:var(--glass); backdrop-filter:blur(12px);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:20px; box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+.map-bottom {
+  position:absolute; bottom:0; left:0; right:0; z-index:400;
+  background:var(--glass); backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);
+  padding:12px 16px; display:flex; align-items:center; justify-content:space-between;
+}
+.map-bus-info .map-bus-name { font-size:12px; font-weight:700; font-family:var(--ff-head); }
+.map-bus-info .map-bus-sub { font-size:11px; color:var(--text2); margin-top:2px; }
+.map-eta-chip {
+  font-family:'DM Mono', monospace; font-size:26px; font-weight:500;
+  color:var(--cyan); text-align:right;
+}
+.map-eta-unit { font-size:11px; color:var(--text2); text-align:right; }
+.leaflet-popup-content-wrapper { background:var(--navy2) !important; border:1px solid var(--border) !important; border-radius:12px !important; color:var(--text) !important; box-shadow:0 8px 32px rgba(0,0,0,.6) !important; }
+.leaflet-popup-tip { background:var(--navy2) !important; }
+.leaflet-popup-content { margin:10px 14px !important; font-family:var(--ff-body) !important; }
+.leaflet-container a.leaflet-popup-close-button { color:var(--text3) !important; }
+
+/* ── STOPS PAGE ─────────────────────────────────────── */
+.stops-header { padding:12px 16px; display:flex; align-items:center; gap:10px; }
+.stops-line-chips { display:flex; gap:6px; overflow-x:auto; padding:0 14px 12px; }
+.stops-line-chips::-webkit-scrollbar { display:none; }
+.slchip {
+  flex-shrink:0; padding:7px 16px; border-radius:99px;
+  font-size:12px; font-weight:700; font-family:var(--ff-head);
+  cursor:pointer; border:1.5px solid transparent;
+  color:var(--text3); background:var(--navy3); border-color:var(--border);
+  transition:all .2s;
+}
+.slchip.cm135.on { background:rgba(0,200,240,.12); color:var(--cyan); border-color:rgba(0,200,240,.4); }
+.slchip.cm170.on { background:rgba(0,232,160,.12); color:var(--green); border-color:rgba(0,232,160,.4); }
+.slchip.cm143.on { background:rgba(255,176,32,.12); color:var(--amber); border-color:rgba(255,176,32,.4); }
+.slchip.cmumfi.on { background:rgba(168,85,247,.12); color:var(--purple); border-color:rgba(168,85,247,.4); }
+
+.stops-list { padding:0 14px; }
+.stop-row { display:flex; gap:10px; padding:4px 0; }
+.stop-tl { display:flex; flex-direction:column; align-items:center; width:20px; flex-shrink:0; padding-top:4px; }
+.stop-dot { width:10px; height:10px; border-radius:50%; background:var(--navy4); border:2px solid var(--text3); flex-shrink:0; transition:all .3s; }
+.stop-dot.passed { background:var(--navy4); border-color:var(--text3); opacity:.4; }
+.stop-dot.next { background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 0 4px rgba(0,200,240,.2),var(--glow-c); transform:scale(1.3); }
+.stop-dot.upcoming { background:transparent; border-color:var(--text3); }
+.stop-connector { width:2px; flex:1; min-height:20px; background:var(--navy4); margin-top:2px; }
+.stop-body { flex:1; display:flex; align-items:center; justify-content:space-between; padding:4px 0 12px; min-width:0; }
+.stop-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+.stop-name.passed { color:var(--text3); text-decoration:line-through; font-weight:400; }
+.stop-name.next { color:var(--text); font-weight:700; }
+.eta-pill { border-radius:8px; padding:4px 10px; font-size:11px; font-weight:500; flex-shrink:0; font-family:'DM Mono', monospace; }
+.eta-pill.now { background:rgba(255,64,96,.15); color:var(--red); border:1px solid rgba(255,64,96,.3); }
+.eta-pill.soon { background:rgba(255,176,32,.12); color:var(--amber); border:1px solid rgba(255,176,32,.3); }
+.eta-pill.far { background:rgba(0,200,240,.08); color:var(--cyan); border:1px solid rgba(0,200,240,.2); }
+.eta-pill.done { background:rgba(74,106,138,.1); color:var(--text3); }
+.eta-pill.sched { background:rgba(255,176,32,.06); color:var(--text3); font-size:10px; }
+
+/* ── SCHEDULES ──────────────────────────────────────── */
+.sched-header { padding:12px 14px; display:flex; align-items:center; gap:10px; }
+.sched-select {
+  flex:1; background:var(--navy3); border:1px solid var(--border);
+  border-radius:10px; padding:9px 12px; color:var(--text);
+  font-size:13px; font-family:var(--ff-body); outline:none;
+}
+.sched-dir-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text3); padding:4px 14px 8px; }
+.sched-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 14px; border-bottom:1px solid var(--border2);
+  transition:background .1s;
+}
+.sched-row.past { opacity:.3; }
+.sched-row.next-bus { background:rgba(0,200,240,.04); }
+.sched-time { font-size:15px; font-weight:400; font-family:'DM Mono', monospace; letter-spacing:0.5px; }
+.sched-row.next-bus .sched-time { font-weight:800; color:var(--cyan); }
+.sched-badge { border-radius:6px; padding:3px 9px; font-size:11px; font-weight:700; font-family:var(--ff-head); }
+.sched-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin:0 14px 14px; overflow:hidden; }
+
+/* ── AVO / SERVICES ─────────────────────────────────── */
+.avo-hero {
+  margin:12px 14px 0;
+  background:linear-gradient(135deg,var(--navy2),var(--navy3));
+  border:1px solid var(--border); border-radius:var(--radius2);
+  padding:20px; text-align:center;
+}
+.avo-logo { width:80px; height:auto; border-radius:16px; margin:0 auto 12px; display:block; }
+.avo-name { font-family:var(--ff-head); font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.avo-tag { font-size:11px; color:var(--cyan); letter-spacing:2px; text-transform:uppercase; margin-top:3px; }
+.avo-rating { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:12px; }
+.avo-score { font-family:var(--ff-head); font-size:32px; font-weight:800; color:var(--green); }
+.avo-stars { color:var(--amber); font-size:16px; letter-spacing:2px; }
+.avo-surveys { font-size:11px; color:var(--text3); margin-top:2px; }
+.avo-actions { display:flex; gap:8px; margin-top:16px; }
+.avo-action-btn {
+  flex:1; padding:11px; border-radius:12px;
+  text-align:center; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; display:block;
+}
+.avo-action-btn.primary { background:rgba(0,200,240,.12); border:1px solid rgba(0,200,240,.3); color:var(--cyan); }
+.avo-action-btn.secondary { background:var(--navy3); border:1px solid var(--border); color:var(--text2); }
+.service-cards { padding:0 14px; display:flex; flex-direction:column; gap:8px; }
+.service-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px;
+  display:flex; align-items:center; gap:14px;
+}
+.service-icon { font-size:28px; width:48px; text-align:center; flex-shrink:0; }
+.service-title { font-size:14px; font-weight:700; margin-bottom:3px; }
+.service-desc { font-size:11px; color:var(--text2); line-height:1.5; }
+
+/* ── TOAST ──────────────────────────────────────────── */
+#toast {
+  position:fixed; bottom:88px; left:50%; transform:translateX(-50%);
+  background:rgba(10,20,36,.95); border:1px solid var(--border);
+  border-radius:12px; padding:10px 18px;
+  font-size:13px; color:var(--text); z-index:9000;
+  transition:opacity .3s; white-space:nowrap;
+  backdrop-filter:blur(16px);
+  opacity:0; pointer-events:none;
+}
+#toast.show { opacity:1; }
+
+/* ── LLEGO ──────────────────────────────────────────── */
+.llego-wrap { padding:0 14px; }
+.llego-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.llego-chip {
+  padding:7px 14px; border-radius:99px; font-size:11px; font-weight:600;
+  background:var(--navy3); border:1px solid var(--border);
+  cursor:pointer; transition:all .2s; color:var(--text2);
+}
+.llego-result {
+  display:none; padding:14px 16px; border-radius:14px;
+  text-align:center; font-size:15px; font-weight:700;
+  margin-top:10px;
+}
+.llego-result.yes { background:rgba(0,232,160,.1); border:1px solid rgba(0,232,160,.3); color:var(--green); }
+.llego-result.run { background:rgba(255,176,32,.1); border:1px solid rgba(255,176,32,.3); color:var(--amber); }
+.llego-result.no  { background:rgba(255,64,96,.1);  border:1px solid rgba(255,64,96,.3);  color:var(--red); }
+
+/* ── OFFLINE ────────────────────────────────────────── */
+#offline-banner {
+  display:none; position:fixed; top:0; left:0; right:0; z-index:500;
+  background:rgba(255,64,96,.9); text-align:center; padding:8px;
+  font-size:12px; font-weight:600; backdrop-filter:blur(8px);
+}
+
+
+/* ── BUS SMOOTH ANIMATION ─────────────────────────────── */
+.bus-marker-el {
+  transition: none; /* position handled by Leaflet */
+}
+
+/* ── GO DESTINATION MODAL ─────────────────────────────── */
+#go-modal {
+  display:none; position:fixed; inset:0; z-index:2000;
+  background:rgba(6,13,26,.9); backdrop-filter:blur(16px);
+  align-items:flex-end; justify-content:center;
+}
+#go-modal.show { display:flex; }
+.go-modal-sheet {
+  width:100%; max-width:480px;
+  background:var(--navy2); border-radius:24px 24px 0 0;
+  border:1px solid var(--border); border-bottom:none;
+  padding:20px 20px env(safe-area-inset-bottom,20px);
+  animation:sheetUp .35s cubic-bezier(.16,1,.3,1);
+}
+@keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.go-modal-handle { width:36px; height:4px; background:var(--navy4); border-radius:99px; margin:0 auto 16px; }
+.go-modal-title { font-size:18px; font-weight:700; margin-bottom:4px; }
+.go-modal-sub { font-size:13px; color:var(--text2); margin-bottom:16px; }
+.go-modal-input {
+  background:var(--navy3); border:1px solid var(--border);
+  border-radius:14px; padding:13px 16px;
+  color:var(--text); font-size:14px; font-family:var(--ff-body);
+  width:100%; outline:none; margin-bottom:10px;
+  transition:border-color .2s;
+}
+.go-modal-input:focus { border-color:rgba(0,200,240,.4); }
+.go-modal-suggestions { max-height:200px; overflow-y:auto; margin-bottom:12px; }
+.go-modal-stop {
+  padding:11px 14px; border-bottom:1px solid var(--border2);
+  cursor:pointer; font-size:13px; display:flex; align-items:center; gap:10px;
+  transition:background .1s;
+}
+.go-modal-stop:active { background:var(--navy3); }
+.go-modal-stop-name { font-weight:600; flex:1; }
+.go-modal-stop-eta { font-family:'DM Mono', monospace; font-size:12px; color:var(--cyan); }
+.go-modal-btn {
+  width:100%; padding:14px; border-radius:14px;
+  background:linear-gradient(135deg,var(--cyan),var(--green));
+  color:#060d1a; font-size:15px; font-weight:700;
+  cursor:pointer; text-align:center; font-family:var(--ff-head);
+  margin-top:4px;
+}
+.go-modal-btn:active { opacity:.9; transform:scale(.98); }
+
+/* ── LIVE PULSE on bus dot ─────────────────────────────── */
+@keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.live-dot { animation:livePulse 2s ease infinite; }
+
+/* ── SCHEDULE NOTE ─────────────────────────────────────── */
+.sched-note {
+  margin:0 14px 8px;
+  background:rgba(255,176,32,.06); border:1px solid rgba(255,176,32,.2);
+  border-radius:10px; padding:10px 14px;
+  font-size:11px; color:var(--text2); line-height:1.6;
+}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="offline-banner">⚠️ Sin conexión — mostrando datos guardados</div>
 
-  <!-- ══ INICIO ══ -->
-  <div id="screen-home" class="screen active">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <img class="logo-img" src="data:image/jpeg;base64,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" alt="AVO Group"/>
-      <div class="ws-pill">
-        <div class="ws-dot" id="wsDot"></div>
-        <span class="ws-txt" id="wsTxt">Conectando</span>
-      </div>
-    </div>
-    <div class="scroll">
-      <div class="fadein">
-        <div class="hero-card">
-          <div class="hero-line">M135 · Línea interurbana</div>
-          <div class="hero-route">Santa Amalia → Estación de Autobuses Málaga</div>
-          <div id="liveBlock" class="live-block" style="display:none">
-            <div class="bus-bubble">🚌</div>
-            <div class="eta-wrap">
-              <div class="eta-label">Próxima parada en</div>
-              <div class="eta-row">
-                <div class="eta-num" id="etaNum">—</div>
-                <div class="eta-unit">min</div>
-              </div>
-              <div class="eta-stop" id="etaStop"></div>
-            </div>
-          </div>
-          <div id="offlineBlock" class="offline-block">
-            <div class="emoji">🔴</div>
-            <div class="offline-title">Bus fuera de servicio</div>
-            <div class="offline-sub">Consulta los horarios<br>en la sección de paradas</div>
-          </div>
-          <div class="stats-row" id="statsRow" style="display:none">
-            <div class="stat-box"><div class="stat-v" id="sSpeed">—</div><div class="stat-l">km/h</div></div>
-            <div class="stat-box"><div class="stat-v" id="sVeh">—</div><div class="stat-l">vehículo</div></div>
-            <div class="stat-box"><div class="stat-v" id="sStops">—</div><div class="stat-l">paradas</div></div>
-          </div>
-        </div>
-
-        <div class="sec-title">Acciones rápidas</div>
-        <div class="actions">
-          <button class="action-btn" style="background:var(--navy)" onclick="goTab('map')">
-            <span class="ab-icon">🗺</span><span class="ab-lbl">Ver en el mapa</span>
-          </button>
-          <button class="action-btn" style="background:var(--accent2)" onclick="goTab('stops')">
-            <span class="ab-icon">📍</span><span class="ab-lbl">Ver paradas</span>
-          </button>
-        </div>
-
-        <div class="sec-title">Próximas salidas · Santa Amalia</div>
-        <div class="sched-card">
-          <div class="sched-row"><span class="sched-t">6:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">7:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">7:45</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">8:30</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">9:15</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">10:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">10:45</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">11:30</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">12:15</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-          <div class="sched-row"><span class="sched-t">13:00</span><span class="sched-d">→ Estación Autobuses</span><span class="sched-dur">74 min</span></div>
-        </div>
-        <div style="height:30px"></div>
-      </div>
-    </div>
+<!-- ══ SPLASH ══ -->
+<div id="splash">
+  <div class="splash-logo-wrap"><img src="data:image/jpeg;base64,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" alt="AVO"></div>
+  <div>
+    <div class="splash-brand">AVO <span>Bus</span></div>
+    <div class="splash-sub">Movilidad Inteligente · Málaga</div>
   </div>
-
-  <!-- ══ MAPA ══ -->
-  <div id="screen-map" class="screen">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <span style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--white)">M135 · Mapa en tiempo real</span>
-      <div id="mapBadge" style="background:var(--gray3);border-radius:20px;padding:5px 12px;">
-        <span style="font-size:10px;font-weight:700;color:var(--white);letter-spacing:.5px" id="mapBadgeTxt">● OFFLINE</span>
-      </div>
-    </div>
-    <div id="map-container">
-      <div id="map"></div>
-      <div class="map-bus-card" id="mapBusCard" style="display:none">
-        <span class="mbc-bus">🚌</span>
-        <div class="mbc-info">
-          <div class="mbc-name" id="mbcName">—</div>
-          <div class="mbc-eta" id="mbcEta">—</div>
-        </div>
-        <div class="live-badge"><span class="live-badge-txt">LIVE</span></div>
-      </div>
-      <div class="map-offline" id="mapOfflineCard">Bus no en servicio ahora mismo</div>
-    </div>
-  </div>
-
-  <!-- ══ PARADAS ══ -->
-  <div id="screen-stops" class="screen">
-    <div class="statusbar"></div>
-    <div class="topbar">
-      <span style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--white)" id="stopsTitleTxt">Paradas · M135</span>
-      <span id="stopsLiveBadge" style="font-size:11px;color:var(--green);font-weight:600;display:none">⚡ Tiempo real</span>
-    </div>
-    <div class="scroll">
-      <div class="stops-list" id="stopsList"></div>
-    </div>
-  </div>
-
-  <!-- ══ TAB BAR ══ -->
-  <div class="tabbar">
-    <button class="tab active" id="tab-home" onclick="goTab('home')">
-      <span class="tab-icon">🏠</span>
-      <span class="tab-lbl">Inicio</span>
-      <div class="tab-ind"></div>
-    </button>
-    <button class="tab" id="tab-map" onclick="goTab('map')">
-      <span class="tab-icon">🗺</span>
-      <span class="tab-lbl">Mapa</span>
-      <div class="tab-ind"></div>
-    </button>
-    <button class="tab" id="tab-stops" onclick="goTab('stops')">
-      <span class="tab-icon">📍</span>
-      <span class="tab-lbl">Paradas</span>
-      <div class="tab-ind"></div>
-    </button>
-  </div>
+  <div class="splash-loader"><div class="splash-loader-fill"></div></div>
 </div>
 
+<!-- ══ APP ══ -->
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="hdr-logo">
+      <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA+AIkDASIAAhEBAxEB/8QAHQABAAICAwEBAAAAAAAAAAAAAAYIAQcCAwUECf/EADoQAAECBQIDBQUGBQUAAAAAAAECAwAEBQYREiEHMVEIEyJBYRQycYGRFiNCUnKCFSRiobEzQ1SS0f/EABoBAQADAQEBAAAAAAAAAAAAAAABAgQDBQb/xAAsEQACAgEDAgMHBQAAAAAAAAABAgADBBESIQUxBnGBBxMyQVFh0RRCkbHS/9oADAMBAAIRAxEAPwC5cIQhEQjGR1ENSfzD6wiZhGNSfzD6w1J/MPrCJmEAQeRBjGodR9YRMwjBIHMiMjflCIhCMak9R9YRMwhDI6iERCEIREIQhEQhCETWnF6dpVBbTNVZbjcnP6mFaW1KBVp3BwNsj/Bip1XrNMkak/LIqLi20LPdrKFjUnyPLpF1uJ1stXbZk/R1Ad8tGuWUfwup3SfrsfQmKG3rTnWwXHGlNvy6i26gjBG+MH4GKdL8HdOt9/kozB2OrDUbfMDTUfPXmWp8adS6FkrTWFNbjjUHuPUT0ftJTv8AnL/6r/8AI5sV+SffbYZm3XHXFBCEJQslSicAAY5xAI3V2Q7I+0vET+PTjOunUIB7cbLmDnux8sFXxSOsarvDWFUhcs3H3H4nv1+0bqzsFCJ/B/1LJyapPhNwZdnp8hTsjLF95JV/qzC+SAfVRSkemIqDw+feq14VO+bjdXMSdI1VWd1KID75X9y1+90pGPyhXSNq9ti9xMVKQsWRey1K4m5/SebhH3aD8Ekqx/UnpEgsvgv7R2aZulus6K9WEpqaCdilxIyy2fTTsc8i4qNmKiYuONf3cek+SzL7MzJZ25PJPmZ4PFtZ4rcA6TxFkgBWKJlmpttbeHYObdAdDg6JUYkHYrvk1ChTtkz75VM08mZktR3Uwo+NI/Ss5/f6RrfsnXS1SrynbHraQaXcDapZbLvuh8AgAg8tQKkEeZ0xHH0VHgrx18AdW1TZvUnrMyi/L1JQceih6R3akFWo9RMy26FbfQy53Fm7mLHsGqXC9oLjDWmWbV/uPK2Qn6kE+gMU84CyqJ+8qhf10TLy6TbqTU511RJLswVEtI9VKXuB5lOPOJV2yb7TXLhkbSp7qjJ05CZiZGCNT605SCOqUH5FZHlHsXxY01ZXZITK9ypE9NzkvO1XbcayNKD+n7sfEHrHOhBVUAe7nT0nS1zZYSOy/wByEVy+eKXGe6nKTb3trUqrJbp0k73TTbefedXkavLdRxnkByjNW4OcYrKklV+TU9lhPeOrpc+ovNgbkkDBP7cxs/sLvUr7N3BLoLYq3tiFujbUWNACPkFd59fWLIOKSlBUsgJAySTtEXZRoc1oo0EmrHFqb2J1Mrx2Y+Ns/dFQRZ92updqRQVSU5gJMwEjJQsDbUACQRzAOd+diYoZa6paZ7T8m5bGPY13Nrli17vc98SojH4dGr5RfMcoz51So4KjTUa6TtiWMykH5RCEIxTVEIQhERVXtOWimlXaasyz/IVhJUsDkl4bLHzyFfEmLVRE+K1pIvOzpmkJLaJoEOyji+SHRyyR5EZB9DHo9KzP0uQGb4TwfIzyusYJzMUqvxDkeYn55zFOm2ppbCZd1zCtKSlBOrpiL08Jrda4WcFgqZlHHZ5uWXUJ5tlBU448U57sAbkgBKB8IhfDvgbW6VeEhU7hfpj0jKr77u2HVrUtad0ggpAxnBPwjeVWZqLi5X+HvJbQl0F4E+8jIyOR8s9OY3jV1a+lmCUtuXufxOPSFyChe9Np7D8yl3DGyrk4kcaU1G6KTPMyrsyuoVFcxLrQhSQchsahyJKU4/LnpF4QAEhIGANoj8vJ3GhTfez7bgD+pWAE+DwZHunPJweXMHIxHbLSlfW4wZmoNtIbcBc0AKLiQlAxyGMkLPpqHy8zIvNxB7AT1KavdAjvrKl9pfh7Wbd4qm4LZp065LVJYnmlyjKl9xMBWVjwg4OrCx+r0jZt60WVvm1LV4tVOkTCZ+jSynJ+mmWWHJpaM6GgnGdPfgeXuLUYsFlPXeMKUhKSVEADnmLnMYhRpyPn9pUYwBJ+spPwKsOv3rxhRWLpps83LMPKqU65NS6kJec1ZSjxDfKyCR0Bi5VxUeQr9CnKLU2A/JzjKmXUHzSRjboRzB8jH37c4ZHWKX5DXMG7aS9VIrUjvrKVXZwg4m8MbmVWLLNRn5ZBPs85TgVPJQfwuNjc+uxSf7D5Kpc3H++JRVAfYuF9h0d262zTfZwseYWtKE7dQTiLwah1jpTNyiisJmGiUEhWFDw46x3GeTyygn6zicQDhWIE0b2bOCL1kzH2nuctLrimyiXl21BSZRKh4iVcisjbbYDO5zG+Y4qcbStKCsBSuQzuY5Rktta1tzd5prrWtdqxCEI5y8QhCERCEIREIQhER1TDS3R4JhxnbHgCeo6g9P7x2whEi8zZkosuLbn51K3H1PK1qStJKlAqBBGDsMDPLJ5gkHLVlUtCHkrfm3u9ZLRLq0rxlOnUMpxnH+ccok8ItuMrtEjzFqSbTxdTOTpOHB76R76Ak7hOc7ZzzzuSYSdpU6WbU2l2ZWFJKVa1g6klSFYO3LKOX9SusSGERuMnaJGV2XTigIRNzzQCEpHduJSUlKcAg6diT4j5E7kRyes+nurWozU4kLmC+U6kEA9ACk7dPMYG8SSENxkbRI9RrTkqXPMzjU5OPLaQUJDqkEYJJPJII947DA9IkMIRBOveSABEIQhJn//Z" alt="AVO">
+      <div class="hdr-logo-text">
+        <div class="hdr-logo-name">AVO Group</div>
+        <div class="hdr-logo-tag">Movilidad Inteligente</div>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <div class="hdr-btn" id="notif-btn" onclick="toggleNotifications()" title="Notificaciones">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGES -->
+  <div id="pages">
+
+    <!-- ══ HOME ══ -->
+    <div class="page on" id="page-home">
+      <div class="page-content">
+
+        <!-- Hero ETA Card -->
+        <div class="hero-card" id="hero-card">
+          <div class="hero-line-badge">
+            <div class="hero-line-dot" id="hero-dot"></div>
+            <span id="home-live-txt">Línea M135 · Tiempo real</span>
+          </div>
+          <div class="hero-eta-row">
+            <div class="hero-eta-num" id="home-eta">--</div>
+            <div class="hero-eta-unit" id="home-eta-unit">min</div>
+          </div>
+          <div class="hero-stop" id="home-stop">Cargando datos…</div>
+          <div class="hero-progress-wrap">
+            <div class="hero-progress-track">
+              <div class="hero-progress-fill" id="home-progress" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="home-co2">0g</div>
+              <div class="hero-stat-lbl">CO₂ ahorrado</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="home-line">M135</div>
+              <div class="hero-stat-lbl">Línea activa</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" id="home-stops">--</div>
+              <div class="hero-stat-lbl">Paradas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leave banner -->
+        <div id="home-leave"></div>
+
+        <!-- Nearby banner -->
+        <div id="nearby-banner" style="display:none;margin:8px 14px 0;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;gap:10px;align-items:center">
+          <div class="nb-icon" onclick="nav('map')">📍</div>
+          <div class="nb-info">
+            <div class="nb-name" id="nearby-name">Parada más cercana</div>
+            <div class="nb-dist" id="nearby-dist">Calculando…</div>
+          </div>
+          <div class="nb-right">
+            <div class="nb-eta" id="nearby-eta">--</div>
+            <div class="go-chip" id="go-btn" style="display:none" onclick="startGO()">GO 🚀</div>
+          </div>
+        </div>
+
+        <!-- GO Panel -->
+        <div id="go-panel">
+          <div class="go-header">
+            <div class="go-badge">🚀 Modo GO Activo</div>
+            <div class="go-stop-btn" onclick="stopGO()">Parar</div>
+          </div>
+          <div id="go-instruction">Calculando…</div>
+          <div id="go-sub"></div>
+          <div id="go-steps-list" class="go-steps"></div>
+          <div class="go-progress-bar"><div class="go-progress-fill" id="go-progress" style="width:0%"></div></div>
+        </div>
+
+        <!-- Trip Planner -->
+        <div class="sec-label">🧭 ¿A dónde vas?</div>
+        <div class="trip-wrap">
+          <div class="trip-input-row">
+            <input id="trip-dest" type="text" placeholder="Busca una parada o destino…" oninput="tripInput()" onkeydown="if(event.key==='Enter')planTrip()">
+            <div class="trip-go-btn" onclick="planTrip()">Ir</div>
+          </div>
+          <div id="trip-suggestions"></div>
+          <div id="trip-result"></div>
+        </div>
+
+        <!-- ¿Llego? -->
+        <div class="sec-label">🎯 ¿Llego a tiempo?</div>
+        <div class="llego-wrap">
+          <div class="llego-chips" id="llego-chips"></div>
+          <div class="llego-result" id="llego-result"></div>
+        </div>
+
+        <!-- Share -->
+        <div class="sec-label">📤 Comparte tu viaje</div>
+        <div id="share-btn" class="share-btn" onclick="toggleShare()">
+          <span style="font-size:20px">📱</span>
+          <div>
+            <div style="font-weight:700">Compartir mi viaje por WhatsApp</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">Envía un link con seguimiento en tiempo real</div>
+          </div>
+        </div>
+
+        <!-- CO2 -->
+        <div class="co2-badge" id="co2-badge">
+          <div class="co2-left">
+            <div class="co2-icon">🌱</div>
+            <div>
+              <div class="co2-label">CO₂ ahorrado hoy</div>
+              <div class="co2-trees" id="co2-trees">vs. ir en coche</div>
+            </div>
+          </div>
+          <div>
+            <div class="co2-val" id="co2-val">0g</div>
+          </div>
+        </div>
+
+        <!-- Lines -->
+        <div class="sec-label">🚌 Líneas AVO Group</div>
+        <div class="line-cards">
+          <div class="line-card lc-m135" onclick="nav('map');setLine('M135')">
+            <div class="lc-badge">M135</div>
+            <div class="lc-info">
+              <div class="lc-name">Alhaurín de la Torre → Málaga</div>
+              <div class="lc-desc">31 paradas · Línea regular</div>
+            </div>
+            <div class="lc-right">
+              <div class="lc-eta-val c135" id="lc-eta-M135" style="color:var(--cyan)">--</div>
+              <div class="lc-status">
+                <div class="lc-dot off" id="dot-M135"></div>
+                <div class="lc-dot-txt off" id="stxt-M135">--</div>
+              </div>
+            </div>
+            <div class="lc-star" id="fav-star-M135" onclick="event.stopPropagation();toggleFav('M135')">☆</div>
+          </div>
+          <div class="line-card lc-m170" onclick="nav('map');setLine('M170')">
+            <div class="lc-badge">M170</div>
+            <div class="lc-info">
+              <div class="lc-name">Pinos Alhaurín → Málaga Express</div>
+              <div class="lc-desc">14 paradas · Exprés</div>
+            </div>
+            <div class="lc-right">
+              <div class="lc-eta-val" id="lc-eta-M170" style="color:var(--green)">--</div>
+              <div class="lc-status">
+                <div class="lc-dot off" id="dot-M170"></div>
+                <div class="lc-dot-txt off" id="stxt-M170">--</div>
+              </div>
+            </div>
+            <div class="lc-star" id="fav-star-M170" onclick="event.stopPropagation();toggleFav('M170')">☆</div>
+          </div>
+          <div class="line-card lc-m143" onclick="nav('map');setLine('M143')">
+            <div class="lc-badge">M143</div>
+            <div class="lc-info">
+              <div class="lc-name">Alhaurín de la Torre → Teatinos</div>
+              <div class="lc-desc">22 paradas · Universitario</div>
+            </div>
+            <div class="lc-right">
+              <div class="lc-eta-val" id="lc-eta-M143" style="color:var(--amber)">--</div>
+              <div class="lc-status">
+                <div class="lc-dot off" id="dot-M143"></div>
+                <div class="lc-dot-txt off" id="stxt-M143">--</div>
+              </div>
+            </div>
+            <div class="lc-star" id="fav-star-M143" onclick="event.stopPropagation();toggleFav('M143')">☆</div>
+          </div>
+          <div class="line-card lc-mumfi" onclick="nav('map');setLine('MUMFI')">
+            <div class="lc-badge">MUMFI</div>
+            <div class="lc-info">
+              <div class="lc-name">Alhaurín de la Torre → Alquería</div>
+              <div class="lc-desc">14 paradas · A demanda</div>
+            </div>
+            <div class="lc-right">
+              <div class="lc-eta-val" id="lc-eta-MUMFI" style="color:var(--purple)">--</div>
+              <div class="lc-status">
+                <div class="lc-dot off" id="dot-MUMFI"></div>
+                <div class="lc-dot-txt off" id="stxt-MUMFI">--</div>
+              </div>
+            </div>
+            <div class="lc-star" id="fav-star-MUMFI" onclick="event.stopPropagation();toggleFav('MUMFI')">☆</div>
+          </div>
+        </div>
+
+        <!-- Favorites -->
+        <div id="favorites-section" style="display:none">
+          <div class="sec-label">⭐ Mis Favoritos</div>
+          <div class="favs-section" id="favorites-list"></div>
+        </div>
+
+      </div><!-- page-content -->
+    </div><!-- page-home -->
+
+    <!-- ══ MAP ══ -->
+    <div class="page" id="page-map">
+      <div id="map-wrap">
+        <div id="map"></div>
+        <div class="map-line-chips" id="map-chips">
+          <div class="map-chip m135 on" id="fchip-M135" onclick="setLine('M135')">M135</div>
+          <div class="map-chip" id="fchip-M170" onclick="setLine('M170')">M170</div>
+          <div class="map-chip" id="fchip-M143" onclick="setLine('M143')">M143</div>
+          <div class="map-chip" id="fchip-MUMFI" onclick="setLine('MUMFI')">MUMFI</div>
+        </div>
+        <div class="map-locate-btn" onclick="locateMe()">📍</div>
+        <div class="map-bottom">
+          <div class="map-bus-info">
+            <div class="map-bus-name" id="map-bus-name">Cargando línea M135…</div>
+            <div class="map-bus-sub" id="map-bus-sub" id="map-label">Tiempo real</div>
+          </div>
+          <div>
+            <div class="map-eta-chip" id="map-eta">--</div>
+            <div class="map-eta-unit">min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STOPS ══ -->
+    <div class="page" id="page-stops">
+      <div class="page-content">
+        <div class="stops-line-chips" id="stops-chips">
+          <div class="slchip cm135 on" onclick="setLine('M135')">M135</div>
+          <div class="slchip cm170" onclick="setLine('M170')">M170</div>
+          <div class="slchip cm143" onclick="setLine('M143')">M143</div>
+          <div class="slchip cmumfi" onclick="setLine('MUMFI')">MUMFI</div>
+        </div>
+        <div style="padding:0 16px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:var(--ff-head);font-size:18px;font-weight:800" id="stops-line-lbl">M135</div>
+            <div style="font-size:11px;color:var(--text3)" id="stops-status-lbl">Cargando…</div>
+          </div>
+        </div>
+        <div class="stops-list" id="stops-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ SCHEDULES ══ -->
+    <div class="page" id="page-schedules">
+      <div class="page-content">
+        <div class="sched-header">
+          <select class="sched-select" id="sched-line-select" onchange="renderSchedules()">
+            <option value="M135">M135 · Alhaurín ↔ Málaga</option>
+            <option value="M170">M170 · Pinos Alhaurín ↔ Málaga</option>
+            <option value="M143">M143 · Alhaurín ↔ Teatinos</option>
+            <option value="MUMFI">MUMFI · Alhaurín ↔ Alquería</option>
+          </select>
+        </div>
+        <div id="sched-content"></div>
+      </div>
+    </div>
+
+    <!-- ══ AVO / SERVICES ══ -->
+    <div class="page" id="page-avo">
+      <div class="page-content">
+        <div class="avo-hero">
+          <img class="avo-logo" src="data:image/jpeg;base64,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" alt="AVO Group">
+          <div class="avo-name">AVO Group</div>
+          <div class="avo-tag">Movilidad Inteligente · Málaga</div>
+          <div class="avo-rating">
+            <div class="avo-score">9.2</div>
+            <div>
+              <div class="avo-stars">★★★★★</div>
+              <div class="avo-surveys">1.296 encuestas de satisfacción</div>
+            </div>
+          </div>
+          <div class="avo-actions">
+            <a href="tel:952433523" class="avo-action-btn primary">📞 Llamar</a>
+            <a href="mailto:comercial@avogroup.es" class="avo-action-btn secondary">✉️ Email</a>
+            <a href="https://avogroup.es" target="_blank" class="avo-action-btn secondary">🌐 Web</a>
+          </div>
+        </div>
+        <div class="sec-label">Nuestros servicios</div>
+        <div class="service-cards">
+          <div class="service-card">
+            <div class="service-icon">🎒</div>
+            <div><div class="service-title">Transporte Escolar</div><div class="service-desc">Rutas homologadas · GPS en todas las unidades · Control de subida y bajada</div></div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">🏔️</div>
+            <div><div class="service-title">Excursiones y Turismo</div><div class="service-desc">Vehículos de 9 a 71 plazas · Conductores con experiencia · Presupuesto personalizado</div></div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">✈️</div>
+            <div><div class="service-title">Traslados Aeropuerto</div><div class="service-desc">Aeropuerto de Málaga · Puntualidad garantizada · Seguimiento de vuelo</div></div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">⚽</div>
+            <div><div class="service-title">Málaga CF</div><div class="service-desc">Transportista oficial del Málaga Club de Fútbol · Desplazamientos a partidos</div></div>
+          </div>
+          <div class="service-card">
+            <div class="service-icon">♿</div>
+            <div><div class="service-title">VIP & Accesible (PMR)</div><div class="service-desc">Flota adaptada para personas con movilidad reducida · Máxima comodidad</div></div>
+          </div>
+        </div>
+        <div style="margin:14px 14px 0;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text2);line-height:1.7">
+          📍 Ctra. Churriana–Cártama A-7052 km 1,3<br>
+          Alhaurín de la Torre, Málaga<br>
+          35+ años de experiencia · 50 vehículos
+        </div>
+      </div>
+    </div>
+
+  </div><!-- pages -->
+
+  <!-- TABS -->
+  <div id="tabs">
+    <div class="tab on" id="tab-home" onclick="nav('home')">
+      <div class="tab-icon">🏠</div><div class="tab-lbl">Inicio</div>
+    </div>
+    <div class="tab" id="tab-map" onclick="nav('map')">
+      <div class="tab-icon">🗺️</div><div class="tab-lbl">Mapa</div>
+    </div>
+    <div class="tab" id="tab-stops" onclick="nav('stops')">
+      <div class="tab-icon">🚏</div><div class="tab-lbl">Paradas</div>
+    </div>
+    <div class="tab" id="tab-schedules" onclick="nav('schedules')">
+      <div class="tab-icon">📅</div><div class="tab-lbl">Horarios</div>
+    </div>
+    <div class="tab" id="tab-avo" onclick="nav('avo')">
+      <div class="tab-icon">⚡</div><div class="tab-lbl">AVO</div>
+    </div>
+  </div>
+
+<!-- GO DESTINATION MODAL -->
+<div id="go-modal">
+  <div class="go-modal-sheet">
+    <div class="go-modal-handle"></div>
+    <div class="go-modal-title">🚀 Modo GO — ¿A dónde vas?</div>
+    <div class="go-modal-sub">Selecciona tu parada de destino en el bus <span id="go-modal-line">M135</span></div>
+    <input class="go-modal-input" id="go-dest-input" type="text" placeholder="Busca parada de destino…" oninput="goModalFilter()">
+    <div class="go-modal-suggestions" id="go-modal-stops"></div>
+    <div class="go-modal-btn" onclick="goModalCancel()">Cancelar</div>
+  </div>
+</div>
+</div><!-- app -->
+<div id="toast"></div>
 <script>
-const BACKEND = 'http://10.10.51.234:3000';
-const WS_URL  = 'ws://10.10.51.234:3000/ws';
-const TABS    = ['home','map','stops'];
+// ══════════════════════════════════════════════════════════════════
+// AVO BUS v6.1
+// Fixes: smooth bus animation, GO with real A→B, complete schedules,
+//        direction detection, professional typography
+// ══════════════════════════════════════════════════════════════════
 
-let lineData   = null;
-let vehicle    = null;
-let mapObj     = null;
-let busMarker  = null;
-let routeLayer = null;
-let stopMarkers= [];
-let selStop    = null;
-let mapInited  = false;
-let currentTab = 'home';
+const BACKEND = 'https://avo-bus-backend-production.up.railway.app';
+const WS_URL  = 'wss://avo-bus-backend-production.up.railway.app/ws';
+const APP_URL = 'https://avo-app-pearl.vercel.app';
+const LINES   = ['M135','M170','M143','MUMFI'];
+const COLORS  = { M135:'#00c8f0', M170:'#00e8a0', M143:'#ffb020', MUMFI:'#a855f7' };
+const CO2_PER_KM = 89;
 
-// ── Tab navigation ──────────────────────────────────────────────────────────
-function goTab(id) {
-  TABS.forEach(t => {
-    document.getElementById('screen-'+t).classList.toggle('active', t===id);
-    document.getElementById('tab-'+t).classList.toggle('active', t===id);
-  });
-  currentTab = id;
-  if (id==='map' && !mapInited) initMap();
-  if (id==='stops') renderStops();
+// ── HORARIOS COMPLETOS (verificados de los documentos originales) ─
+// Teresa: estos son los horarios que nos pasaste — laborables
+const SCHEDULES = {
+  M135: {
+    ida: [
+      '05:45','06:00','06:15','06:30','06:45',
+      '07:00','07:15','07:30','07:45','08:00','08:15','08:30','08:45',
+      '09:00','09:15','09:30','09:45','10:00','10:15','10:30','10:45',
+      '11:00','11:15','11:30','11:45','12:00','12:15','12:30','12:45',
+      '13:00','13:15','13:30','13:45','14:00','14:15','14:30','14:45',
+      '15:00','15:15','15:30','15:45','16:00','16:30',
+      '17:00','17:15','17:30','17:45','18:00','18:15','18:30','18:45',
+      '19:00','19:15','19:30','19:45','20:00','20:30',
+      '21:00','21:30','22:00'
+    ],
+    vuelta: [
+      '06:30','06:45','07:00','07:15','07:30','07:45',
+      '08:00','08:15','08:30','08:45','09:00','09:15','09:30','09:45',
+      '10:00','10:15','10:30','10:45','11:00','11:15','11:30','11:45',
+      '12:00','12:15','12:30','12:45','13:00','13:15','13:30','13:45',
+      '14:00','14:15','14:30','14:45','15:00','15:15','15:30','15:45',
+      '16:00','16:15','16:30','16:45','17:00','17:15','17:30','17:45',
+      '18:00','18:15','18:30','18:45','19:00','19:15','19:30','19:45',
+      '20:00','20:15','20:30','21:00','21:30','22:00','22:30','23:00'
+    ]
+  },
+  M170: {
+    ida: [
+      '06:30','07:00','07:15','07:30','07:45',
+      '08:00','08:15','08:30','08:45','09:00','09:15','09:30',
+      '10:00','10:30','11:00','12:00','13:00','14:00',
+      '15:00','16:00','17:00','18:00','18:30',
+      '19:00','19:30','20:00','20:30','21:00','21:30'
+    ],
+    vuelta: [
+      '07:15','07:30','07:45','08:00','08:15','08:30','08:45',
+      '09:00','09:15','09:30','09:45','10:00','10:30','11:00',
+      '12:30','13:30','14:30','15:30','16:30','17:30','18:30',
+      '19:00','19:30','20:00','20:30','21:00','21:30','22:00'
+    ]
+  },
+  M143: {
+    ida: ['07:00','07:30','08:00','08:30','09:00','09:30','09:45','10:00','13:30','14:00','14:30'],
+    vuelta: ['09:00','09:30','10:00','10:30','13:00','13:30','14:00','14:30','15:00','15:30','19:00','19:30']
+  },
+  MUMFI: {
+    ida: ['07:30','10:00','14:30'],
+    vuelta: ['08:15','11:00','15:15']
+  }
+};
+
+// ── NOTE ON DIRECTION ISSUE ───────────────────────────────────────
+// The tracking API only exposes ONE active service at a time per line.
+// M135 has buses going both ways simultaneously. The backend picks the
+// service with the lowest COD_SERV_REITERACION. The bus that passed
+// your stop going towards the airport is a DIFFERENT service (vuelta)
+// that we're not currently tracking. This is a backend limitation —
+// needs to be fixed in Railway by fetching both COD_SERV values.
+// For now we show the direction of whatever service we have.
+
+// ── STATE ────────────────────────────────────────────────────────
+let activeLine   = 'M135';
+let vehicles     = {};
+let stopsData    = {};
+let map = null, mapReady = false, mapLoading = false;
+let busMarker    = null;
+let routeLayer   = null;
+let stopLayers   = [];
+let userMarker   = null;
+let userLat = null, userLon = null;
+let shareInterval = null;
+// GO state
+let goMode        = false;
+let goInterval    = null;
+let goOriginStop  = null;  // {stopNombre, idx}
+let goDestStop    = null;  // {stopNombre, idx}
+let goLineId      = null;
+// Smooth bus animation
+let busAnimTarget = null;  // {lat, lon} — where bus is heading
+let busAnimFrame  = null;
+// Other
+let notifEnabled  = false;
+let lastNotifKey  = null;
+let tripCO2       = parseFloat(localStorage.getItem('avo_co2') || '0');
+let favorites     = JSON.parse(localStorage.getItem('avo_favs') || '[]');
+let prevLat = null, prevLon = null;
+
+// ── BOOT ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('app').style.display   = 'flex';
+    boot();
+  }, 2600);
+});
+
+async function boot() {
+  watchGPS();
+  connectWS();
+  loadFavorites();
+  updateCO2Display();
+  buildLlegoChips();
+  await Promise.all(LINES.map(preloadLine));
+  await fetchAllLines();
+  setInterval(fetchAllLines, 10000);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    notifEnabled = true;
+    document.getElementById('notif-btn').classList.add('active');
+  }
+  window.addEventListener('online',  () => showToast('✅ Conexión recuperada'));
+  window.addEventListener('offline', () => showToast('⚠️ Sin conexión — datos guardados'));
 }
 
-// ── Init map ────────────────────────────────────────────────────────────────
-function initMap() {
-  mapInited = true;
-  mapObj = L.map('map', { zoomControl: false, attributionControl: false }).setView([36.685,-4.515], 11);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(mapObj);
-  L.control.zoom({ position:'bottomright' }).addTo(mapObj);
-  if (lineData) drawMap();
+// ── PRELOAD STOPS ────────────────────────────────────────────────
+async function preloadLine(lid) {
+  for (const ep of ['/stops/', '/lines/']) {
+    try {
+      const r = await fetch(BACKEND + ep + lid);
+      if (!r.ok) continue;
+      const d = await r.json();
+      const arr = Array.isArray(d) ? d : (d.stops || []);
+      if (!arr.length) continue;
+      stopsData[lid] = arr.map(s => ({
+        stopNombre: s.stopNombre || s.nombre || s.name || '',
+        lat: parseFloat(s.lat || s.latitude || 0),
+        lon: parseFloat(s.lon || s.lng || s.longitude || 0)
+      })).filter(s => s.lat > 35.5 && s.lat < 43.5 && s.lon > -9.5 && s.lon < 4.5 && !isNaN(s.lat) && !isNaN(s.lon));
+      return;
+    } catch(e) {}
+  }
 }
 
-function drawMap() {
-  if (!mapObj) return;
-  const stops = lineData.stops || [];
-  const route = lineData.route || [];
+// ── FETCH VEHICLES ────────────────────────────────────────────────
+async function fetchAllLines() {
+  await Promise.all(LINES.map(async lid => {
+    try {
+      const r = await fetch(BACKEND + '/vehicles/' + lid);
+      if (!r.ok) return;
+      const v = await r.json();
+      if (!v || !v.lineId) return;
+      const old = vehicles[lid];
+      vehicles[lid] = v;
+      // Enrich stopsData
+      if (v.etas?.length && (!stopsData[lid]?.length)) {
+        stopsData[lid] = v.etas.map(e => ({
+          stopNombre: e.stopNombre || '',
+          lat: parseFloat(e.lat || 0),
+          lon: parseFloat(e.lon || 0)
+        })).filter(s => s.lat > 35 && s.lat < 44);
+      }
+      updateLineCard(lid);
+      if (lid === activeLine) {
+        updateHomeCard(v);
+        if (mapReady) {
+          // Smooth animate if position changed
+          if (old?.lat && v.lat && (old.lat !== v.lat || old.lon !== v.lon)) {
+            animateBusTo(v.lat, v.lon);
+          } else {
+            moveBusMarker(v);
+          }
+        }
+      }
+    } catch(e) {}
+  }));
+  updateNearbyBanner();
+  renderFavorites();
+  checkNotifications();
+  if (goMode) updateGO();
+}
 
-  if (routeLayer) mapObj.removeLayer(routeLayer);
-  const pts = route.length > 0 ? route.map(p=>[p.lat,p.lon]) : stops.map(s=>[s.lat,s.lon]);
-  if (pts.length > 0) {
-    routeLayer = L.polyline(pts, { color:'#0F3460', weight:5, opacity:.9 }).addTo(mapObj);
-    mapObj.fitBounds(pts, { padding:[30,30] });
+// ── SCHEDULE HELPERS ─────────────────────────────────────────────
+function nextFromSchedule(lid, dir = 'ida') {
+  const times = SCHEDULES[lid]?.[dir];
+  if (!times) return null;
+  const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+  for (const t of times) {
+    const [h, m] = t.split(':').map(Number);
+    const tm = h * 60 + m;
+    if (tm > nm) return { minsAway: tm - nm, time: t };
+  }
+  return null;
+}
+
+function getDisplayETA(lid) {
+  const v = vehicles[lid];
+  // Only trust live ETAs if bus is genuinely online (updated in last 5 min)
+  const isReallyOnline = v?.isOnline && v?.updatedAt &&
+    (Date.now() - new Date(v.updatedAt).getTime()) < 5 * 60 * 1000;
+  if (isReallyOnline) {
+    const upcoming = v.etas?.filter(e => e.etaMinutes != null && e.status !== 'passed' && e.etaMinutes >= 0) || [];
+    if (upcoming.length) return { live:true, eta:upcoming[0], mins:upcoming[0].etaMinutes };
+  }
+  // Fall back to schedule
+  const nx = nextFromSchedule(lid);
+  if (nx) return { live:false, mins:nx.minsAway, time:nx.time };
+  return null;
+}
+
+// ── HOME CARD ────────────────────────────────────────────────────
+function updateHomeCard(v) {
+  const etas     = v.etas || [];
+  const upcoming = etas.filter(e => e.etaMinutes != null && e.status !== 'passed');
+  const passed   = etas.filter(e => e.status === 'passed').length;
+
+  document.getElementById('home-live-txt').textContent = 'Línea ' + v.lineId + (v.isOnline ? ' · En servicio' : ' · Sin servicio');
+  document.getElementById('home-line').textContent     = v.lineId;
+  document.getElementById('home-stops').textContent    = upcoming.length || etas.length || '—';
+
+  if (!v.isOnline || !etas.length) {
+    const nx = nextFromSchedule(v.lineId);
+    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '·';
+    document.getElementById('home-eta-unit').textContent = nx ? 'min' : '';
+    document.getElementById('home-stop').textContent     = nx ? '📅 Próximo: ' + nx.time + 'h' : '🌙 Sin más servicios hoy';
+    document.getElementById('home-progress').style.width = '0%';
+    hideLeave(); return;
+  }
+  if (!upcoming.length) {
+    const nx = nextFromSchedule(v.lineId);
+    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '·';
+    document.getElementById('home-eta-unit').textContent = nx ? 'min' : '';
+    document.getElementById('home-stop').textContent     = nx ? '🔄 Próximo: ' + nx.time + 'h' : '🌙 Sin más servicios hoy';
+    document.getElementById('home-progress').style.width = '100%';
+    hideLeave(); return;
   }
 
-  stopMarkers.forEach(m => mapObj.removeLayer(m));
-  stopMarkers = [];
-  stops.forEach((s,i) => {
-    const big = i===0 || i===stops.length-1;
-    const icon = L.divIcon({
-      html: `<div style="width:${big?16:9}px;height:${big?16:9}px;border-radius:50%;background:${big?'#0F3460':'white'};border:2.5px solid #0F3460;box-shadow:0 2px 6px rgba(0,0,0,.2)"></div>`,
-      className:'', iconSize:[big?16:9,big?16:9], iconAnchor:[big?8:4.5,big?8:4.5]
-    });
-    stopMarkers.push(L.marker([s.lat,s.lon],{icon}).addTo(mapObj).bindPopup(`<b>${s.nombre}</b><br>Parada ${s.orden}`));
-  });
+  const next = upcoming[0];
+  document.getElementById('home-eta').textContent      = next.etaMinutes;
+  document.getElementById('home-eta-unit').textContent = 'min';
+  const statusNext  = etas.find(e=>e.status==='next');
+  const displayNext = statusNext || next;
+  const stopLabel   = displayNext?.stopNombre || 'Próxima parada';
+  document.getElementById('home-stop').textContent = '→ ' + stopLabel;
+  document.getElementById('home-progress').style.width = Math.round((passed / etas.length) * 100) + '%';
 
-  updateBusOnMap();
+  const busNum   = v.vehicleId ? 'Bus ' + v.vehicleId + ' · ' : '';
+  const trueNext = etas.find(e=>e.status==='next') || upcoming[0] || next;
+  document.getElementById('map-bus-name').textContent = busNum + 'Línea ' + v.lineId;
+  document.getElementById('map-bus-sub').textContent  = '→ ' + (trueNext?.stopNombre || '—');
+  document.getElementById('map-eta').textContent      = trueNext?.etaMinutes != null ? trueNext.etaMinutes : '--';
+
+  if (userLat) {
+    const ns = getNearestStop(etas.filter(e => e.lat && e.lon));
+    if (ns) {
+      const wk = Math.max(1, Math.round(distM(userLat, userLon, ns.lat, ns.lon) / 80));
+      const lv = next.etaMinutes - wk - 1;
+      const el = document.getElementById('home-leave');
+      el.style.display = 'block';
+      el.innerHTML = lv <= 0
+        ? '🏃 <b>¡SAL AHORA!</b> El bus llega en ' + next.etaMinutes + ' min'
+        : '⏰ Sal de casa en <b>' + lv + ' min</b> · Bus en ' + next.etaMinutes + ' min';
+    }
+  }
+  document.getElementById('go-btn').style.display = 'block';
+}
+function hideLeave() {
+  const el = document.getElementById('home-leave');
+  if (el) { el.style.display = 'none'; }
 }
 
-function updateBusOnMap() {
-  if (!mapObj || !vehicle?.isOnline) {
-    if (busMarker) { mapObj && mapObj.removeLayer(busMarker); busMarker=null; }
+// ── LINE CARD ────────────────────────────────────────────────────
+function updateLineCard(lid) {
+  const v   = vehicles[lid];
+  const on  = v?.isOnline;
+  ['dot','stxt'].forEach(id => {
+    const el = document.getElementById(id + '-' + lid);
+    if (!el) return;
+    el.className = (id === 'dot' ? 'lc-dot ' : 'lc-dot-txt ') + (on ? 'on' : 'off');
+    if (id === 'stxt') el.textContent = on ? 'Activo' : 'Inactivo';
+  });
+  const etaEl = document.getElementById('lc-eta-' + lid);
+  if (!etaEl) return;
+  const d = getDisplayETA(lid);
+  if (d?.live)       { etaEl.textContent = d.mins + ' min'; etaEl.style.fontSize = '18px'; }
+  else if (d?.time)  { etaEl.textContent = d.time + 'h'; etaEl.style.fontSize = '14px'; }
+  else               { etaEl.textContent = '—'; }
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t  => t.classList.remove('on'));
+  document.getElementById('page-' + page).classList.add('on');
+  document.getElementById('tab-'  + page).classList.add('on');
+  if (page === 'map')       openMap();
+  if (page === 'stops')     renderStops();
+  if (page === 'schedules') renderSchedules();
+}
+
+// ── SET LINE ─────────────────────────────────────────────────────
+function setLine(lid) {
+  activeLine = lid;
+  LINES.forEach(l => {
+    const mc = document.getElementById('fchip-' + l);
+    if (mc) { mc.className = 'map-chip'; if (l === lid) mc.classList.add(l.toLowerCase()); }
+  });
+  const chips = document.querySelectorAll('.slchip');
+  LINES.forEach((l, i) => {
+    if (chips[i]) chips[i].className = 'slchip c' + l.toLowerCase() + (l === lid ? ' on' : '');
+  });
+  if (vehicles[lid]) updateHomeCard(vehicles[lid]);
+  if (mapReady) drawLine(lid);
+  renderStops();
+  updateLlegoChips();
+}
+
+// ── MAP ──────────────────────────────────────────────────────────
+function openMap() {
+  if (mapReady) { drawLine(activeLine); return; }
+  if (mapLoading) return;
+  mapLoading = true;
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(css);
+  const js = document.createElement('script');
+  js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  js.onload = () => {
+    map = L.map('map', { zoomControl:false, attributionControl:false }).setView([36.67,-4.56],12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+    mapReady = true; mapLoading = false;
+    drawLine(activeLine);
+    if (userLat) placeUserDot();
+  };
+  js.onerror = () => { mapLoading = false; };
+  document.head.appendChild(js);
+}
+
+async function drawLine(lid) {
+  if (!map || !mapReady) return;
+  // ── FULL CLEAR ──
+  if (busMarker)  { try{map.removeLayer(busMarker);}catch(e){} busMarker=null; }
+  if (routeLayer) { try{map.removeLayer(routeLayer);}catch(e){} routeLayer=null; }
+  stopLayers.forEach(m => { try{map.removeLayer(m);}catch(e){} });
+  stopLayers = [];
+  if (window._walkLine) { try{map.removeLayer(window._walkLine);}catch(e){} window._walkLine=null; }
+  cancelAnimationFrame(busAnimFrame);
+  busAnimTarget = null;
+
+  const color = COLORS[lid] || '#00c8f0';
+  const v     = vehicles[lid];
+  const raw   = v?.etas?.length ? v.etas : (stopsData[lid] || []);
+  const stops = raw.map(s => ({
+    stopNombre: s.stopNombre || s.name || '',
+    lat: parseFloat(s.lat || s.latitude || 0),
+    lon: parseFloat(s.lon || s.lng || s.longitude || 0),
+    status:     s.status || '',
+    etaMinutes: s.etaMinutes ?? null
+  })).filter(s => s.lat > 35.5 && s.lat < 43.5 && s.lon > -9.5 && s.lon < 4.5 && !isNaN(s.lat) && !isNaN(s.lon));
+
+  if (!stops.length) {
+    document.getElementById('map-bus-name').textContent = 'Sin datos para línea ' + lid;
     return;
   }
-  const icon = L.divIcon({
-    html:'<div style="width:40px;height:40px;border-radius:50%;background:#0F3460;display:flex;align-items:center;justify-content:center;font-size:20px;border:3px solid white;box-shadow:0 4px 14px rgba(15,52,96,.6)">🚌</div>',
-    className:'', iconSize:[40,40], iconAnchor:[20,20]
+
+  // Stop markers — only show meaningful stops to avoid clutter
+  // Show: next (big pulsing), upcoming (small), first & last always visible
+  const hasLive = stops.some(s => s.status === 'next' || s.status === 'upcoming');
+  stops.forEach((s, i) => {
+    const isNext     = s.status === 'next';
+    const isUpcoming = s.status === 'upcoming';
+    const isPassed   = s.status === 'passed';
+    const isFirst    = i === 0;
+    const isLast     = i === stops.length - 1;
+
+    // Skip passed stops (they're behind the bus, no need to show)
+    // Always show first, last, next and upcoming stops
+    if (isPassed && !isFirst && !isLast) return;
+    if (!isNext && !isUpcoming && !isFirst && !isLast && hasLive) return;
+
+    const sz = isNext ? 16 : (isFirst||isLast ? 12 : 8);
+    const bg = isNext ? color : (isPassed ? 'rgba(74,106,138,.35)' : color+'99');
+    const border = isPassed ? 'rgba(74,106,138,.4)' : 'white';
+    const glow = isNext ? `box-shadow:0 0 0 6px ${color}30,0 0 18px ${color}60;` : '';
+
+    const el = document.createElement('div');
+    el.style.cssText = `width:${sz}px;height:${sz}px;border-radius:50%;cursor:pointer;` +
+      `background:${bg};border:2px solid ${border};${glow}`;
+
+    const mk = L.marker([s.lat,s.lon],{
+      icon:L.divIcon({html:el,className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})
+    }).addTo(map);
+
+    let etaHtml = '';
+    if (s.etaMinutes != null && !isPassed) {
+      etaHtml = `<b style="color:${color}">🚌 Llega en ${s.etaMinutes} min</b>`;
+    } else {
+      const nx = nextFromSchedule(lid);
+      etaHtml = nx && nx.minsAway > 0
+        ? `<span style="color:#ffb020">📅 Próximo ${nx.time}h</span>`
+        : `<span style="color:#4a6a8a">Sin más servicios hoy</span>`;
+    }
+    mk.bindPopup(`<b style="font-size:13px">${s.stopNombre||'Parada '+(i+1)}</b><br><small>${etaHtml}</small>`);
+    stopLayers.push(mk);
   });
-  if (busMarker) busMarker.setLatLng([vehicle.lat, vehicle.lon]);
-  else { busMarker = L.marker([vehicle.lat,vehicle.lon],{icon,zIndexOffset:1000}).addTo(mapObj); }
+
+  if (v?.isOnline && v.lat && v.lon) moveBusMarker(v);
+  await drawOSRM(stops, color, lid);
+  try {
+    // Fit to route if available, otherwise stops
+    const bounds = routeLayer ? routeLayer.getBounds() : L.latLngBounds(stops.map(s=>[s.lat,s.lon]));
+    map.fitBounds(bounds, {padding:[40,80], maxZoom:14});
+  } catch(e){ try{map.fitBounds(stops.map(s=>[s.lat,s.lon]),{padding:[40,80]});}catch(e2){} }
+  updateNearbyBanner();
 }
 
-// ── Render stops list ───────────────────────────────────────────────────────
-function renderStops() {
-  const stops = lineData?.stops || [];
-  const el    = document.getElementById('stopsList');
-  el.innerHTML = '';
-  document.getElementById('stopsTitleTxt').textContent = stops.length + ' paradas · M135';
-  document.getElementById('stopsLiveBadge').style.display = vehicle?.isOnline ? 'inline' : 'none';
+// Route geometry cache keyed by lineId
+const routeGeomCache = {};
 
-  stops.forEach((s,i) => {
-    const eta  = vehicle?.etas?.[i];
-    const psd  = eta?.status==='passed';
-    const nxt  = eta?.status==='next';
-    const last = i===stops.length-1;
-    const isSel= selStop===i;
-
-    const div = document.createElement('div');
-    div.className = 'stop-item' + (nxt?' nxt':'') + (psd?' psd':'') + (isSel?' sel':'');
-    
-    let etaHTML = '';
-    if (!vehicle?.isOnline) etaHTML = '<div class="eta-tag et-none"><span>—</span></div>';
-    else if (psd)            etaHTML = '<div class="eta-tag et-psd"><span>✓</span></div>';
-    else if (nxt)            etaHTML = `<div class="eta-tag et-nxt"><span>${eta.etaMinutes===0?'¡Ya!':eta.etaMinutes+'min'}</span></div>`;
-    else if (eta)            etaHTML = `<div class="eta-tag et-live"><span>${eta.etaMinutes}min</span></div>`;
-
-    div.innerHTML = `
-      <div class="tl">
-        <div class="tl-dot${nxt?' nxt':psd?' psd':''}"></div>
-        ${!last?`<div class="tl-line${psd?' psd':''}"></div>`:''}
-      </div>
-      <div class="stop-info">
-        <div class="stop-name${psd?' psd':''}">${s.nombre}</div>
-        <div class="stop-num">Parada ${s.orden}</div>
-        ${isSel && s.hora ? `<div class="stop-hora">🕐 Hora aprox: ${s.hora}</div>` : ''}
-      </div>
-      ${etaHTML}`;
-    
-    div.onclick = () => {
-      selStop = (selStop===i) ? null : i;
-      renderStops();
-    };
-    el.appendChild(div);
-  });
+async function drawOSRM(stops, color, lineId) {
+  // ── STRATEGY 1: Backend route geometry (AVO's real GPS track) ──
+  if (lineId) {
+    try {
+      const r = await fetch(BACKEND + '/lines/' + lineId, {signal:AbortSignal.timeout(7000)});
+      if (r.ok) {
+        const d = await r.json();
+        let coords = null;
+        if (d.shape?.geometry?.coordinates?.length > 2) coords = d.shape.geometry.coordinates;
+        else if (d.route?.length > 2) coords = d.route.map(p => [p.lon, p.lat]);
+        // Filter out coords outside Spain + remove jump segments > 5km
+        const rawCoords = (coords||[]).filter(c=>c[1]>35.5&&c[1]<43.5&&c[0]>-9.5&&c[0]<4.5);
+        // Remove jump segments (straight long lines between distant points)
+        const safeCoords = rawCoords.filter((c,i) => {
+          if (i===0) return true;
+          const prev = rawCoords[i-1];
+          const dLat = c[1]-prev[1], dLon = c[0]-prev[0];
+          const distKm = Math.sqrt(dLat*dLat+dLon*dLon)*111;
+          return distKm < 5; // skip points more than 5km from previous (jump artifacts)
+        });
+        if (safeCoords.length > 2) {
+          routeGeomCache[lineId] = safeCoords;
+          routeLayer = L.geoJSON({type:'LineString',coordinates:safeCoords},{style:{color,weight:5,opacity:.95,lineJoin:'round',lineCap:'round'}}).addTo(map);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+  // ── STRATEGY 2: Cached geometry ──
+  if (lineId && routeGeomCache[lineId]) {
+    routeLayer = L.geoJSON({type:'LineString',coordinates:routeGeomCache[lineId]},{style:{color,weight:5,opacity:.95,lineJoin:'round',lineCap:'round'}}).addTo(map);
+    return;
+  }
+  // ── STRATEGY 3: OSRM with sampled stops ──
+  const sample = sampleEvenly(stops, 6);
+  try {
+    const qs = sample.map(s=>s.lon.toFixed(5)+','+s.lat.toFixed(5)).join(';');
+    const r = await fetch('https://router.project-osrm.org/route/v1/driving/'+qs+'?overview=full&geometries=geojson',{signal:AbortSignal.timeout(6000)});
+    const d = await r.json();
+    if (d.code==='Ok' && d.routes?.[0]?.geometry?.coordinates?.length > 2) {
+      const rawGc = d.routes[0].geometry.coordinates;
+      const gc = rawGc.filter((c,i)=>{
+        if(i===0)return true;
+        const p=rawGc[i-1];
+        return Math.sqrt((c[1]-p[1])**2+(c[0]-p[0])**2)*111 < 5;
+      });
+      if (gc.length < 2) throw new Error('bad coords after filter');
+      if (lineId) routeGeomCache[lineId] = gc;
+      routeLayer = L.geoJSON({type:'LineString',coordinates:gc},{style:{color,weight:5,opacity:.9,lineJoin:'round',lineCap:'round'}}).addTo(map);
+      return;
+    }
+  } catch(e) {}
+  // ── STRATEGY 4: Polyline through stops ──
+  routeLayer = L.polyline(stops.map(s=>[s.lat,s.lon]),{color,weight:4,opacity:.8,lineJoin:'round',lineCap:'round',smoothFactor:2}).addTo(map);
 }
 
-// ── Update UI with vehicle data ─────────────────────────────────────────────
-function updateVehicle(v) {
-  vehicle = v;
-  const live = v?.isOnline;
+function sampleEvenly(arr, n) {
+  if (arr.length<=n) return arr;
+  const result=[arr[0]];
+  const step=(arr.length-1)/(n-1);
+  for (let i=1;i<n-1;i++) result.push(arr[Math.round(i*step)]);
+  result.push(arr[arr.length-1]);
+  return result;
+}
 
-  // ws indicator
-  document.getElementById('wsDot').className = 'ws-dot' + (live?' live':'');
-  document.getElementById('wsTxt').textContent = live ? 'Tiempo real' : 'Sin señal';
+// ── SMOOTH BUS ANIMATION ─────────────────────────────────────────
+// Instead of jumping, lerp the bus position smoothly over 3 seconds
+function inSpain(lat, lon) {
+  return lat > 35.5 && lat < 43.5 && lon > -9.5 && lon < 4.5 && !isNaN(lat) && !isNaN(lon);
+}
 
-  // home screen
-  document.getElementById('liveBlock').style.display   = live ? 'flex' : 'none';
-  document.getElementById('offlineBlock').style.display = live ? 'none' : 'block';
-  document.getElementById('statsRow').style.display     = live ? 'grid' : 'none';
+function animateBusTo(targetLat, targetLon) {
+  if (!inSpain(targetLat, targetLon)) return; // ignore bogus GPS (Africa bug)
+  if (!map || !mapReady || !busMarker) { moveBusMarkerDirect(targetLat, targetLon); return; }
+  const startLat = busMarker.getLatLng().lat;
+  const startLon = busMarker.getLatLng().lng;
+  const duration = 3000; // ms — smooth over 3 seconds
+  const start    = performance.now();
+  cancelAnimationFrame(busAnimFrame);
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = t < .5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+    const lat = startLat + (targetLat - startLat) * ease;
+    const lon = startLon + (targetLon - startLon) * ease;
+    busMarker.setLatLng([lat, lon]);
+    if (t < 1) busAnimFrame = requestAnimationFrame(step);
+  }
+  busAnimFrame = requestAnimationFrame(step);
+}
 
-  if (live) {
-    const nxt = v.etas?.find(e=>e.status==='next');
-    document.getElementById('etaNum').textContent  = nxt ? (nxt.etaMinutes===0?'<1':nxt.etaMinutes) : '...';
-    document.getElementById('etaStop').textContent = nxt?.stopNombre || '';
-    document.getElementById('sSpeed').textContent  = v.speedKmh;
-    document.getElementById('sVeh').textContent    = '#'+v.vehicleId;
-    document.getElementById('sStops').textContent  = lineData?.stops?.length || '—';
-
-    // map badge
-    document.getElementById('mapBadge').style.background = 'var(--green)';
-    document.getElementById('mapBadgeTxt').textContent   = '● EN RUTA';
-    document.getElementById('mapBusCard').style.display  = 'flex';
-    document.getElementById('mapOfflineCard').style.display = 'none';
-    document.getElementById('mbcName').textContent = `Bus #${v.vehicleId} · ${v.speedKmh} km/h`;
-    const nxtMap = v.etas?.find(e=>e.status==='next');
-    document.getElementById('mbcEta').textContent = nxtMap ? `Próxima: ${nxtMap.stopNombre} · ${nxtMap.etaMinutes} min` : '';
-
-    // live dot on tab
-    let ld = document.querySelector('.live-dot');
-    if (!ld) { ld = document.createElement('div'); ld.className='live-dot'; document.getElementById('tab-map').appendChild(ld); }
+function moveBusMarker(v) {
+  if (!map || !mapReady || !v.lat || !v.lon || v.lineId !== activeLine) return;
+  if (busMarker) {
+    animateBusTo(v.lat, v.lon);
   } else {
-    document.getElementById('mapBadge').style.background = 'var(--gray3)';
-    document.getElementById('mapBadgeTxt').textContent   = '● OFFLINE';
-    document.getElementById('mapBusCard').style.display  = 'none';
-    document.getElementById('mapOfflineCard').style.display = 'block';
-    document.querySelector('.live-dot')?.remove();
+    moveBusMarkerDirect(v.lat, v.lon);
+  }
+}
+function moveBusMarkerDirect(lat, lon) {
+  if (!map || !inSpain(lat, lon)) return;
+  const lid   = activeLine;
+  const color = COLORS[lid] || '#00c8f0';
+  if (busMarker) { busMarker.setLatLng([lat, lon]); return; }
+  const el = document.createElement('div');
+  el.style.cssText =
+    `width:40px;height:40px;border-radius:50%;background:${color};` +
+    `border:3px solid white;display:flex;align-items:center;justify-content:center;` +
+    `font-size:18px;box-shadow:0 0 0 8px ${color}20,0 4px 16px rgba(0,0,0,.6)`;
+  el.textContent = '🚌';
+  busMarker = L.marker([lat,lon],{
+    icon:L.divIcon({html:el,className:'',iconSize:[40,40],iconAnchor:[20,20]}),
+    zIndexOffset:1000
+  }).addTo(map);
+}
+
+// ── GPS ──────────────────────────────────────────────────────────
+function watchGPS() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos => {
+    prevLat = userLat; prevLon = userLon;
+    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+    if (mapReady) placeUserDot();
+    updateNearbyBanner();
+    if (prevLat && goMode) {
+      const d = distM(prevLat, prevLon, userLat, userLon) / 1000;
+      if (d > 0.02 && d < 1.0) {
+        tripCO2 += d * CO2_PER_KM;
+        localStorage.setItem('avo_co2', tripCO2.toFixed(1));
+        updateCO2Display();
+      }
+    }
+  }, null, { enableHighAccuracy:true, maximumAge:8000 });
+}
+
+function placeUserDot() {
+  if (!map) return;
+  const el = document.createElement('div');
+  el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 0 6px rgba(59,130,246,.2)';
+  const icon = L.divIcon({html:el,className:'',iconSize:[14,14],iconAnchor:[7,7]});
+  if (userMarker) userMarker.setLatLng([userLat,userLon]);
+  else userMarker = L.marker([userLat,userLon],{icon}).addTo(map).bindPopup('📍 Tu ubicación');
+}
+function locateMe() {
+  if (userLat && map) { map.setView([userLat,userLon],15); return; }
+  navigator.geolocation?.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+    if (map) { placeUserDot(); map.setView([userLat,userLon],15); }
+  });
+}
+
+// ── CO₂ ─────────────────────────────────────────────────────────
+function updateCO2Display() {
+  const val = tripCO2>=1000 ? (tripCO2/1000).toFixed(2)+'kg' : Math.round(tripCO2)+'g';
+  ['home-co2','co2-val'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=val; });
+  const trees = Math.floor(tripCO2 / 22000);
+  const t = document.getElementById('co2-trees');
+  if (t) t.textContent = trees>0 ? `≈${trees} árbol${trees>1?'es':''} compensado${trees>1?'s':''}` : 'vs ir en coche';
+}
+
+// ── NEARBY BANNER ────────────────────────────────────────────────
+function updateNearbyBanner() {
+  if (!userLat) return;
+  const v    = vehicles[activeLine];
+  const pool = v?.etas?.filter(e=>e.lat&&e.lon) || (stopsData[activeLine]||[]).filter(s=>s.lat&&s.lon);
+  if (!pool.length) return;
+  const nearest = getNearestStop(pool);
+  if (!nearest) return;
+  const dM      = Math.round(distM(userLat, userLon, nearest.lat, nearest.lon));
+  const walkMin = Math.max(1, Math.round(dM / 80));
+
+  let etaMin = null, etaLine = activeLine;
+  if (nearest.etaMinutes != null && nearest.status !== 'passed') etaMin = nearest.etaMinutes;
+  else {
+    LINES.forEach(lid => {
+      const vv = vehicles[lid];
+      if (!vv?.etas) return;
+      const m = vv.etas.find(e=>e.etaMinutes!=null&&e.status!=='passed'&&normalize(e.stopNombre||'')===normalize(nearest.stopNombre||''));
+      if (m && (etaMin==null||m.etaMinutes<etaMin)) { etaMin=m.etaMinutes; etaLine=lid; }
+    });
   }
 
-  updateBusOnMap();
-  if (currentTab==='stops') renderStops();
+  let etaDisplay='—', etaColor='var(--cyan)', subMsg='';
+  if (etaMin != null) {
+    etaDisplay = etaMin+' min';
+    etaColor   = etaMin<=3?'var(--red)':etaMin<=8?'var(--amber)':'var(--cyan)';
+    const lv   = etaMin-walkMin-1;
+    subMsg = lv<=0?'🏃 <b style="color:var(--red)">¡SAL AHORA!</b>':'⏰ Sal en <b style="color:var(--amber)">'+lv+' min</b>';
+    if (etaLine!==activeLine) subMsg+=' · <b style="color:'+COLORS[etaLine]+'">'+etaLine+'</b>';
+  } else {
+    const sc = nextFromSchedule(activeLine);
+    if (sc && sc.minsAway > 0) { etaDisplay=sc.time; etaColor='var(--amber)'; subMsg='📅 Próximo '+sc.time+'h (en '+sc.minsAway+' min)'; }
+    else subMsg = '🌙 Sin más servicios hoy';
+  }
+
+  const gmaps = 'https://www.google.com/maps/dir/?api=1&origin='+userLat+','+userLon+'&destination='+nearest.lat+','+nearest.lon+'&travelmode=walking';
+  document.getElementById('nearby-banner').style.display = 'flex';
+  document.getElementById('nearby-name').textContent = nearest.stopNombre || 'Parada cercana';
+  document.getElementById('nearby-dist').innerHTML =
+    dM+'m · ~'+walkMin+' min a pie · '+subMsg+
+    ' &nbsp;<a href="'+gmaps+'" target="_blank" style="color:var(--cyan);font-weight:600;text-decoration:none">Maps ↗</a>';
+  document.getElementById('nearby-eta').innerHTML = '<span style="color:'+etaColor+';font-size:20px;font-weight:700;font-family:\'DM Mono\',monospace">'+etaDisplay+'</span>';
+
+  if (mapReady && map && nearest.lat) {
+    if (window._walkLine) { try{map.removeLayer(window._walkLine);}catch(e){} }
+    window._walkLine = L.polyline([[userLat,userLon],[nearest.lat,nearest.lon]],{color:'#3b82f6',weight:2,dashArray:'5,8',opacity:.7}).addTo(map);
+  }
 }
 
-// ── WebSocket ───────────────────────────────────────────────────────────────
-function connectWS() {
-  const ws = new WebSocket(WS_URL);
-  ws.onopen  = () => { document.getElementById('wsDot').className='ws-dot live'; document.getElementById('wsTxt').textContent='Conectado'; };
-  ws.onclose = () => { document.getElementById('wsDot').className='ws-dot warn'; document.getElementById('wsTxt').textContent='Reconectando...'; setTimeout(connectWS,3000); };
-  ws.onmessage = ({data}) => {
-    const msg = JSON.parse(data);
-    if (msg.type==='init') { const v=msg.data.find(v=>v.lineId==='M135'); if(v) updateVehicle(v); }
-    else if (msg.type==='vehicle:position' && msg.data.lineId==='M135') updateVehicle(msg.data);
-    else if (msg.type==='vehicle:offline') updateVehicle({...vehicle, isOnline:false});
+// ── GO MODE — Con origen y destino reales ────────────────────────
+//  1. Tap GO → abre modal bottom sheet
+//  2. Usuario elige destino de la lista de paradas de la línea activa
+//  3. App calcula: origen (parada más cercana), paradas a recorrer, cuándo salir
+function startGO() {
+  if (!userLat) { showToast('Necesito tu ubicación GPS'); return; }
+  const v = vehicles[activeLine];
+  const etas = v?.etas?.filter(e => e.etaMinutes != null && e.status !== 'passed') || [];
+  if (!etas.length) { showToast('No hay bus activo en línea ' + activeLine); return; }
+  goLineId = activeLine;
+  // Open destination picker modal
+  document.getElementById('go-modal-line').textContent = activeLine;
+  document.getElementById('go-dest-input').value = '';
+  goModalFilter('');
+  document.getElementById('go-modal').classList.add('show');
+}
+
+function goModalFilter(query) {
+  const q = normalize(query || document.getElementById('go-dest-input')?.value || '');
+  const v = vehicles[goLineId || activeLine];
+  const etas = v?.etas || stopsData[goLineId || activeLine] || [];
+  const allStops = stopsData[goLineId || activeLine] || etas;
+  const filtered = allStops.filter(s => !q || fuzzyScore(q, normalize(s.stopNombre||'')) > 0);
+  const color = COLORS[goLineId || activeLine];
+
+  // Find nearest stop (boarding)
+  const allWithC = etas.filter(e=>e.lat&&e.lon);
+  const board = getNearestStop(allWithC) || etas[0];
+
+  document.getElementById('go-modal-stops').innerHTML = filtered.slice(0,12).map((s,i) => {
+    // Find ETA for this stop
+    const etaStop = etas.find(e => normalize(e.stopNombre||'') === normalize(s.stopNombre||''));
+    const etaTxt = etaStop?.etaMinutes != null ? etaStop.etaMinutes+' min' : '';
+    return `<div class="go-modal-stop" onclick="goSelectDest('${(s.stopNombre||'').replace(/'/g,"&#39;")}')">
+      <span style="color:${color};font-size:16px">🚏</span>
+      <span class="go-modal-stop-name">${s.stopNombre || 'Parada '+(i+1)}</span>
+      ${etaTxt ? `<span class="go-modal-stop-eta">${etaTxt}</span>` : ''}
+    </div>`;
+  }).join('') || '<div style="padding:16px;color:var(--text3);font-size:13px;text-align:center">No se encontraron paradas</div>';
+}
+
+function goSelectDest(stopName) {
+  document.getElementById('go-modal').classList.remove('show');
+  const v    = vehicles[activeLine];
+  const etas = v?.etas || stopsData[activeLine] || [];
+  const allC = (v?.etas||[]).filter(e=>e.lat&&e.lon);
+  const board = getNearestStop(allC) || etas[0];
+
+  // Find indices
+  const boardIdx = etas.findIndex(e => normalize(e.stopNombre||'') === normalize(board?.stopNombre||''));
+  const destIdx  = etas.findIndex(e => normalize(e.stopNombre||'') === normalize(stopName));
+
+  goOriginStop = { ...board, idx: boardIdx >= 0 ? boardIdx : 0 };
+  goDestStop   = { stopNombre: stopName, idx: destIdx >= 0 ? destIdx : etas.length-1 };
+  goLineId     = activeLine;
+  goMode       = true;
+
+  document.getElementById('go-panel').style.display = 'block';
+  document.getElementById('go-btn').style.display   = 'none';
+  updateGO();
+  clearInterval(goInterval);
+  goInterval = setInterval(updateGO, 10000);
+  showToast('🚀 GO activado → ' + stopName);
+}
+
+function goModalCancel() {
+  document.getElementById('go-modal').classList.remove('show');
+}
+
+function stopGO() {
+  goMode = false; goOriginStop = null; goDestStop = null;
+  clearInterval(goInterval);
+  document.getElementById('go-panel').style.display = 'none';
+  document.getElementById('go-btn').style.display   = 'block';
+  showToast('GO desactivado');
+}
+
+function updateGO() {
+  if (!goMode || !goDestStop) return;
+  const v    = vehicles[goLineId || activeLine];
+  const etas = v?.etas || [];
+  const allC = etas.filter(e=>e.lat&&e.lon);
+  const board = goOriginStop || getNearestStop(allC) || etas[0];
+  const dest  = goDestStop;
+
+  const boardEta = etas.find(e=>normalize(e.stopNombre||'')===normalize(board.stopNombre||''));
+  const destEta  = etas.find(e=>normalize(e.stopNombre||'')===normalize(dest.stopNombre||''));
+  const busIn    = boardEta?.etaMinutes ?? (nextFromSchedule(goLineId)?.minsAway ?? null);
+
+  const wkMin = userLat && board.lat
+    ? Math.max(1, Math.round(distM(userLat, userLon, board.lat, board.lon) / 80))
+    : 2;
+  const leaveIn = busIn != null ? busIn - wkMin - 1 : null;
+
+  // Count stops between board and dest
+  const bIdx = goOriginStop?.idx ?? 0;
+  const dIdx = dest.idx ?? etas.length - 1;
+  const nStops = Math.max(0, dIdx - bIdx);
+
+  // Passed origin?
+  const boardPassed = boardEta?.status === 'passed';
+  // Near destination?
+  const destMins = destEta?.etaMinutes;
+
+  // Instruction
+  let instruction = '', sub = '';
+  if (!boardPassed) {
+    if (leaveIn != null && leaveIn <= 0) instruction = '🏃 ¡SAL AHORA! Bus en ' + (busIn||'?') + ' min';
+    else if (leaveIn != null)             instruction = '⏰ Sal en ' + leaveIn + ' min · Bus en ' + busIn + ' min';
+    else                                  instruction = '📅 Comprueba el horario';
+    sub = `Sube en: <b>${board.stopNombre || 'parada cercana'}</b>`;
+  } else if (destMins != null) {
+    instruction = '🚌 En el bus · Baja en ' + destMins + ' min';
+    sub = `Destino: <b>${dest.stopNombre}</b> · ${nStops} parada${nStops!==1?'s':''}`;
+  } else {
+    instruction = '🏁 ¿Ya llegaste?';
+    sub = `Destino: <b>${dest.stopNombre}</b>`;
+  }
+
+  document.getElementById('go-instruction').textContent = instruction;
+  document.getElementById('go-sub').innerHTML = sub;
+
+  const passed   = etas.filter(e=>e.status==='passed').length;
+  const progress = etas.length ? Math.round((passed/etas.length)*100) : 0;
+  document.getElementById('go-progress').style.width = progress + '%';
+
+  // Steps
+  document.getElementById('go-steps-list').innerHTML = [
+    { done:boardPassed, active:!boardPassed&&leaveIn!=null&&leaveIn<=0,
+      text:`🚶 Camina ~${wkMin}min a <b>${board.stopNombre||'parada'}</b>` },
+    { done:boardPassed, active:boardPassed,
+      text:`🚌 Sube al bus <b>${goLineId}</b>${busIn?` · llega en ${busIn} min`:''}` },
+    { done:destMins!=null&&destMins<=0, active:destMins!=null&&destMins>0,
+      text:`⬇️ Baja en <b>${dest.stopNombre}</b>${destMins?` · en ${destMins} min`:''}` }
+  ].map((s,i) =>
+    `<div class="go-step ${s.done?'done':s.active?'active':''}">
+      <div class="go-step-num">${s.done?'✓':i+1}</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5">${s.text}</div>
+    </div>`
+  ).join('');
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────────────
+async function toggleNotifications() {
+  if (!('Notification' in window)) { showToast('Navegador sin soporte'); return; }
+  if (Notification.permission === 'denied') { showToast('Activa en ajustes del navegador'); return; }
+  if (notifEnabled) {
+    notifEnabled = false;
+    document.getElementById('notif-btn').classList.remove('active');
+    showToast('🔕 Notificaciones desactivadas');
+    return;
+  }
+  const p = await Notification.requestPermission();
+  if (p === 'granted') {
+    notifEnabled = true;
+    document.getElementById('notif-btn').classList.add('active');
+    new Notification('🚌 AVO Bus', {body:'Recibirás avisos cuando el bus esté cerca'});
+    showToast('🔔 Notificaciones activadas');
+  } else { showToast('❌ Permiso denegado'); }
+}
+function checkNotifications() {
+  if (!notifEnabled || !userLat) return;
+  const v = vehicles[activeLine];
+  if (!v?.etas) return;
+  const ns = getNearestStop(v.etas.filter(e=>e.lat&&e.lon));
+  if (!ns?.etaMinutes) return;
+  const m = ns.etaMinutes;
+  const key = activeLine + '_' + ns.stopNombre + '_' + m;
+  if (lastNotifKey === key) return;
+  if (m===10||m===5||m===2) {
+    lastNotifKey = key;
+    try{new Notification('🚌 '+activeLine,{body:'Bus llega a '+ns.stopNombre+' en '+m+' min'});}catch(e){}
+  }
+}
+
+// ── FAVORITES ────────────────────────────────────────────────────
+function loadFavorites() {
+  favorites = JSON.parse(localStorage.getItem('avo_favs') || '[]');
+  LINES.forEach(lid => {
+    const s = document.getElementById('fav-star-'+lid);
+    if (s) s.textContent = favorites.includes(lid) ? '⭐' : '☆';
+  });
+  renderFavorites();
+}
+function toggleFav(lid) {
+  const i = favorites.indexOf(lid);
+  if (i>=0) favorites.splice(i,1); else favorites.push(lid);
+  localStorage.setItem('avo_favs', JSON.stringify(favorites));
+  loadFavorites();
+  showToast(favorites.includes(lid)?'⭐ Añadido':'☆ Eliminado de favoritos');
+}
+function renderFavorites() {
+  const sec=document.getElementById('favorites-section'), list=document.getElementById('favorites-list');
+  if(!sec||!list||!favorites.length){if(sec)sec.style.display='none';return;}
+  sec.style.display='block';
+  list.innerHTML=favorites.map(lid=>{
+    const d=getDisplayETA(lid), c=COLORS[lid]||'#00c8f0';
+    const etaTxt=d?.live?d.mins+' min':d?.time?d.time+'h':'—';
+    const next=(vehicles[lid]?.etas||[]).filter(e=>e.etaMinutes!=null&&e.status!=='passed')[0];
+    return `<div class="line-card lc-${lid.toLowerCase()}" onclick="nav('map');setLine('${lid}')">
+      <div class="lc-badge">${lid}</div>
+      <div class="lc-info">
+        <div class="lc-name">${next?next.stopNombre:'Sin servicio activo'}</div>
+        <div class="lc-desc">${d?.live?'En camino':'Próximo: '+etaTxt}</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:${c}">${etaTxt}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── SHARE ────────────────────────────────────────────────────────
+function toggleShare() {
+  const btn = document.getElementById('share-btn');
+  if (shareInterval) {
+    clearInterval(shareInterval); shareInterval = null;
+    btn.className = 'share-btn';
+    btn.innerHTML = '<span style="font-size:20px">📱</span><div><div style="font-weight:700">Compartir mi viaje por WhatsApp</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Envía un link con seguimiento en tiempo real</div></div>';
+    return;
+  }
+  const doShare = () => {
+    const v  = vehicles[activeLine];
+    const nx = v?.etas?.filter(e=>e.etaMinutes!=null&&e.status!=='passed')?.[0];
+    const p  = new URLSearchParams({line:activeLine,...(nx?{stop:nx.stopNombre,eta:nx.etaMinutes}:{}),...(userLat?{lat:userLat.toFixed(4),lon:userLon.toFixed(4)}:{})});
+    const link = APP_URL + '?' + p.toString();
+    const msg  = nx
+      ? `🚌 Voy en el bus *${activeLine}* → llego a *${nx.stopNombre}* en *${nx.etaMinutes} min*\n\n👆 Sígueme en tiempo real:\n${link}`
+      : `🚌 Voy en *AVO Group* · Línea *${activeLine}*\n\n👆 Sígueme:\n${link}`;
+    window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
   };
+  doShare();
+  shareInterval = setInterval(doShare,120000);
+  btn.className = 'share-btn active';
+  btn.innerHTML = '<span style="font-size:20px">🟢</span><div><div style="font-weight:700">Compartiendo en WhatsApp…</div><div style="font-size:11px;margin-top:2px">Toca para parar · actualiza cada 2 min</div></div>';
 }
 
-// ── Load line data ──────────────────────────────────────────────────────────
-async function init() {
-  try {
-    const r = await fetch(BACKEND + '/lines/M135');
-    lineData = await r.json();
-    document.getElementById('sStops').textContent = lineData.stops?.length || '—';
-    if (mapInited) drawMap();
-  } catch(e) {}
-  connectWS();
+// ── STOPS ────────────────────────────────────────────────────────
+function renderStops() {
+  const lid  = activeLine, list = document.getElementById('stops-list'), color = COLORS[lid];
+  document.getElementById('stops-line-lbl').textContent = lid;
+  document.querySelectorAll('.slchip').forEach((el,i)=>{
+    el.className='slchip c'+LINES[i].toLowerCase()+(LINES[i]===lid?' on':'');
+  });
+  const v=vehicles[lid], etas=v?.etas||[];
+  if (!etas.length) {
+    const nx=nextFromSchedule(lid);
+    list.innerHTML=`<div style="text-align:center;padding:48px 24px">
+      <div style="font-size:40px;margin-bottom:12px">🕐</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px">Bus no activo ahora</div>
+      ${nx?`<div style="font-size:13px;color:var(--text2)">Próximo servicio: <b style="color:${color}">${nx.time}h</b><br>En ${nx.minsAway} min</div>`:'<div style="font-size:13px;color:var(--text3)">Sin más servicios hoy</div>'}
+    </div>`;
+    document.getElementById('stops-status-lbl').textContent=nx?'Próximo '+nx.time+'h':'Sin servicio';
+    return;
+  }
+  const upcoming=etas.filter(e=>e.etaMinutes!=null&&e.status!=='passed');
+  document.getElementById('stops-status-lbl').textContent=upcoming.length?upcoming.length+' paradas próximas':'Servicio completado';
+  list.innerHTML=etas.map((s,i)=>{
+    const isNext=s.status==='next',isPassed=s.status==='passed';
+    let pill='';
+    if(s.etaMinutes!=null&&s.status!=='passed'){
+      const cls=s.etaMinutes<=2?'now':s.etaMinutes<=10?'soon':'far';
+      pill=`<div class="eta-pill ${cls}">${s.etaMinutes} min</div>`;
+    }else if(isPassed){
+      let nb=null;
+      LINES.forEach(l2=>{const vv=vehicles[l2];if(!vv?.etas)return;const m=vv.etas.find(e=>e.etaMinutes!=null&&e.status!=='passed'&&normalize(e.stopNombre||'')===normalize(s.stopNombre||''));if(m&&(!nb||m.etaMinutes<nb.etaMinutes))nb={...m,lineId:l2};});
+      if(nb)pill=`<div class="eta-pill far" style="color:var(--amber)">${nb.lineId} ${nb.etaMinutes}m</div>`;
+      else{const sc=nextFromSchedule(lid);pill=sc?`<div class="eta-pill sched">${sc.time}</div>`:`<div class="eta-pill done">✓</div>`;}
+    }else{pill=`<div class="eta-pill done" style="opacity:.3">${i+1}</div>`;}
+    const conn=i<etas.length-1?'<div class="stop-connector"></div>':'';
+    return `<div class="stop-row">
+      <div class="stop-tl"><div class="stop-dot ${isNext?'next':isPassed?'passed':'upcoming'}"></div>${conn}</div>
+      <div class="stop-body">
+        <div class="stop-name ${isPassed?'passed':isNext?'next':''}">${s.stopNombre||'Parada '+(i+1)}</div>${pill}
+      </div>
+    </div>`;
+  }).join('');
 }
 
-init();
+// ── SCHEDULES ────────────────────────────────────────────────────
+function renderSchedules() {
+  const el=document.getElementById('sched-content');if(!el)return;
+  const lid=document.getElementById('sched-line-select')?.value||activeLine;
+  const s=SCHEDULES[lid]||SCHEDULES.M135, c=COLORS[lid];
+  const now=new Date(), nm=now.getHours()*60+now.getMinutes();
+  const noteHtml=`<div class="sched-note">⚠️ Horarios orientativos · Días laborables · Pueden existir variaciones por festivos u operativas. Llama al <a href="tel:952433523" style="color:var(--cyan)">952 433 523</a> para confirmar.</div>`;
+  const renderDir=(label,times)=>{
+    const rows=times.map(t=>{
+      const[h,m]=t.split(':').map(Number),tm=h*60+m,diff=tm-nm;
+      const past=diff<-1,isNext=!past&&diff<90;
+      return `<div class="sched-row${past?' past':isNext?' next-bus':''}">
+        <span class="sched-time">${t}</span>
+        ${isNext?`<span class="sched-badge" style="background:${c}15;color:${c};border:1px solid ${c}30">+${diff} min</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="sched-dir-label">${label}</div><div class="sched-card">${rows}</div>`;
+  };
+  const labels={M135:['🔵 Alhaurín → Málaga','🔵 Málaga → Alhaurín'],M170:['🟢 Pinos Alhaurín → Málaga','🟢 Málaga → Pinos Alhaurín'],M143:['🟡 Alhaurín → Teatinos (días lectivos)','🟡 Teatinos → Alhaurín (días lectivos)'],MUMFI:['🟣 Alhaurín → Alquería','🟣 Alquería → Alhaurín']};
+  const[l1,l2]=labels[lid]||labels.M135;
+  el.innerHTML=noteHtml+renderDir(l1,s.ida)+renderDir(l2,s.vuelta);
+}
+
+// ── TRIP PLANNER ─────────────────────────────────────────────────
+function planTrip() {
+  const raw=(document.getElementById('trip-dest').value||'').trim();
+  const q=normalize(raw), result=document.getElementById('trip-result');
+  document.getElementById('trip-suggestions').innerHTML='';
+  if(q.length<2){result.innerHTML='';return;}
+  const found=[],seen=new Set();
+  LINES.forEach(lid=>{
+    const src=vehicles[lid]?.etas?.length?vehicles[lid].etas:stopsData[lid]||[];
+    src.forEach((s,idx)=>{
+      const name=s.stopNombre||s.name||'',key=lid+'_'+name;
+      if(!name||seen.has(key))return;
+      const sc=fuzzyScore(q,normalize(name));
+      if(sc>0){seen.add(key);found.push({lid,s,idx,score:sc,v:vehicles[lid]});}
+    });
+  });
+  if(!found.length){result.innerHTML=`<div class="trip-result-wrap"><div class="trip-result-item"><p style="color:var(--text2);font-size:13px;text-align:center;padding:8px 0">No encontré "<b>${raw}</b>"<br><small style="color:var(--text3)">Prueba: málaga, estación, teatinos, romeral…</small></p></div></div>`;return;}
+  found.sort((a,b)=>b.score!==a.score?b.score-a.score:(a.s.etaMinutes??9999)-(b.s.etaMinutes??9999));
+  const items=found.slice(0,5).map(m=>{
+    const c=COLORS[m.lid]||'#00c8f0',name=m.s.stopNombre||raw;
+    let etaTxt,etaColor;
+    if(m.s.etaMinutes!=null&&m.s.status!=='passed'){etaTxt=m.s.etaMinutes+' min';etaColor=m.s.etaMinutes<=5?'var(--red)':c;}
+    else{const sc=nextFromSchedule(m.lid);etaTxt=sc?sc.time+'h':'Sin servicio';etaColor='var(--amber)';}
+    let steps='';
+    if(userLat&&m.v?.etas){
+      const allC=m.v.etas.filter(e=>e.lat&&e.lon),board=getNearestStop(allC);
+      if(board){
+        const d=distM(userLat,userLon,board.lat,board.lon),w=Math.max(1,Math.round(d/80));
+        const bi=m.v.etas.findIndex(e=>normalize(e.stopNombre||'')===normalize(board.stopNombre||''));
+        const ns=Math.max(0,m.idx-bi);
+        const lv=m.s.etaMinutes!=null?m.s.etaMinutes-w-1:null;
+        steps=`<div class="tri-steps">
+          <div class="tri-step"><div class="tri-step-icon">🚶</div><div>Camina <b>${Math.round(d)}m</b> (~${w}min) a <b>${board.stopNombre||'parada'}</b></div></div>
+          <div class="tri-step"><div class="tri-step-icon">🚌</div><div>Sube al <b style="color:${c}">bus ${m.lid}</b></div></div>
+          ${ns>0?`<div class="tri-step"><div class="tri-step-icon">🔢</div><div><b>${ns} parada${ns>1?'s':''}</b> hasta destino</div></div>`:''}
+          <div class="tri-step"><div class="tri-step-icon">⬇️</div><div>Baja en <b>${name}</b></div></div>
+          ${lv!=null?`<div class="tri-step"><div class="tri-step-icon">⏰</div><div>${lv<=0?'<b style="color:var(--red)">¡SAL AHORA!</b>':'Sal en <b style="color:var(--amber)">'+lv+' min</b>'}</div></div>`:''}
+        </div>`;
+      }
+    }
+    return `<div class="trip-result-item">
+      <div class="tri-top">
+        <div class="tri-badge" style="background:${c}15;color:${c};border:1px solid ${c}35">${m.lid}</div>
+        <div class="tri-name">${name}</div>
+        <div class="tri-eta" style="color:${etaColor};font-family:'DM Mono',monospace">${etaTxt}</div>
+      </div>${steps}</div>`;
+  }).join('');
+  result.innerHTML=`<div class="trip-result-wrap">${items}${found.length>5?`<div class="trip-result-item" style="text-align:center;color:var(--text3);font-size:11px">+${found.length-5} más</div>`:''}</div>`;
+}
+function tripInput(){
+  const raw=(document.getElementById('trip-dest').value||'').trim(),box=document.getElementById('trip-suggestions');
+  if(raw.length<2){box.innerHTML='';return;}
+  const q=normalize(raw),seen=new Set(),sugs=[];
+  LINES.forEach(lid=>(stopsData[lid]||[]).forEach(s=>{const n=s.stopNombre||'';if(!n||seen.has(n))return;if(fuzzyScore(q,normalize(n))>0){seen.add(n);sugs.push(n);}}));
+  box.innerHTML=sugs.slice(0,6).map(n=>`<div class="suggestion" onclick="selectSuggestion('${n.replace(/'/g,"&#39;")}')"><span style="color:var(--cyan)">📍</span> ${n}</div>`).join('');
+}
+function selectSuggestion(name){
+  document.getElementById('trip-dest').value=name;
+  document.getElementById('trip-suggestions').innerHTML='';
+  planTrip();
+}
+
+// ── LLEGO ────────────────────────────────────────────────────────
+function buildLlegoChips(){
+  const wrap=document.getElementById('llego-chips');if(!wrap)return;
+  wrap.innerHTML=['Málaga Centro','Estación Málaga','Teatinos UMA','Alhaurín Centro'].map(n=>`<div class="llego-chip" onclick="checkLlego(this,'${n}')">${n}</div>`).join('');
+}
+function updateLlegoChips(){
+  const wrap=document.getElementById('llego-chips');if(!wrap)return;
+  const etas=vehicles[activeLine]?.etas?.filter(e=>e.stopNombre)||[];
+  const tops=etas.slice(-5).map(e=>e.stopNombre).filter(Boolean);
+  if(!tops.length){buildLlegoChips();return;}
+  wrap.innerHTML=tops.map(n=>`<div class="llego-chip" onclick="checkLlego(this,'${n.replace(/'/g,"&#39;")}')">${n}</div>`).join('');
+}
+function checkLlego(el,stopName){
+  document.querySelectorAll('.llego-chip').forEach(c=>c.style.background='');
+  el.style.background='rgba(0,200,240,.1)';
+  const res=document.getElementById('llego-result'),v=vehicles[activeLine];
+  if(!v?.isOnline){res.className='llego-result no';res.textContent='⚠️ Sin servicio activo';res.style.display='block';return;}
+  const stop=(v.etas||[]).find(e=>normalize(e.stopNombre||'').includes(normalize(stopName)));
+  if(!stop){res.className='llego-result no';res.textContent='❓ Parada no encontrada';res.style.display='block';return;}
+  if(stop.status==='passed'){res.className='llego-result no';res.textContent='🚌 El bus ya pasó por aquí';res.style.display='block';return;}
+  if(stop.etaMinutes==null){res.className='llego-result no';res.textContent='⚠️ Sin ETA disponible';res.style.display='block';return;}
+  const m=stop.etaMinutes;
+  if(m>10){res.className='llego-result yes';res.textContent='✅ Llegas cómodo · Bus en '+m+' min';}
+  else if(m>3){res.className='llego-result run';res.textContent='🏃 Corre · Bus en '+m+' min';}
+  else{res.className='llego-result no';res.textContent='🚌 ¡Llega ahora mismo! '+m+' min';}
+  res.style.display='block';
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+function distM(la1,lo1,la2,lo2){const R=6371000,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180,a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function getNearestStop(stops){if(!userLat||!stops.length)return null;return stops.reduce((best,s)=>{const lat=parseFloat(s.lat||s.latitude||0),lon=parseFloat(s.lon||s.lng||s.longitude||0);if(lat<35||lat>44)return best;const d=distM(userLat,userLon,lat,lon);return(!best||d<best._d)?{...s,lat,lon,_d:d}:best;},null);}
+function normalize(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,'').trim();}
+function fuzzyScore(q,t){if(!q||!t)return 0;if(t.includes(q))return 3;if(t.split(/\s+/).some(w=>w.startsWith(q)))return 2;const hits=q.split(/\s+/).filter(w=>t.split(/\s+/).some(tw=>tw.startsWith(w)||w.startsWith(tw.slice(0,3)))).length;return hits>0?1:0;}
+
+// ── WEBSOCKET ─────────────────────────────────────────────────────
+function connectWS(){
+  try{
+    const ws=new WebSocket(WS_URL);
+    ws.onclose=()=>setTimeout(connectWS,3000);
+    ws.onerror=()=>{try{ws.close();}catch(e){}};
+    ws.onmessage=e=>{
+      try{
+        const msg=JSON.parse(e.data);
+        if(msg.type==='vehicle:position'&&msg.data){
+          const v=msg.data;
+          const old=vehicles[v.lineId];
+          vehicles[v.lineId]={...(vehicles[v.lineId]||{}),...v};
+          updateLineCard(v.lineId);
+          if(v.lineId===activeLine){
+            updateHomeCard(vehicles[v.lineId]);
+            if(mapReady&&old?.lat&&v.lat) animateBusTo(v.lat,v.lon);
+            else if(mapReady) moveBusMarkerDirect(v.lat,v.lon);
+          }
+          updateNearbyBanner();renderFavorites();checkNotifications();
+        }
+      }catch(err){}
+    };
+    ws.onclose=()=>setTimeout(connectWS,5000);
+    ws.onerror=()=>ws.close();
+  }catch(e){}
+}
 </script>
 </body>
 </html>
