@@ -1389,16 +1389,8 @@ async function drawOSRM(stops, color, lineId) {
         let coords = null;
         if (d.shape?.geometry?.coordinates?.length > 2) coords = d.shape.geometry.coordinates;
         else if (d.route?.length > 2) coords = d.route.map(p => [p.lon, p.lat]);
-        // Filter out coords outside Spain + remove jump segments > 5km
-        const rawCoords = (coords||[]).filter(c=>c[1]>35.5&&c[1]<43.5&&c[0]>-9.5&&c[0]<4.5);
-        // Remove jump segments (straight long lines between distant points)
-        const safeCoords = rawCoords.filter((c,i) => {
-          if (i===0) return true;
-          const prev = rawCoords[i-1];
-          const dLat = c[1]-prev[1], dLon = c[0]-prev[0];
-          const distKm = Math.sqrt(dLat*dLat+dLon*dLon)*111;
-          return distKm < 5; // skip points more than 5km from previous (jump artifacts)
-        });
+        // Filter only for valid Spain coordinates
+        const safeCoords = (coords||[]).filter(c=>c[1]>35.5&&c[1]<43.5&&c[0]>-9.5&&c[0]<4.5);
         if (safeCoords.length > 2) {
           routeGeomCache[lineId] = safeCoords;
           routeLayer = L.geoJSON({type:'LineString',coordinates:safeCoords},{style:{color,weight:5,opacity:.95,lineJoin:'round',lineCap:'round'}}).addTo(map);
@@ -1412,19 +1404,14 @@ async function drawOSRM(stops, color, lineId) {
     routeLayer = L.geoJSON({type:'LineString',coordinates:routeGeomCache[lineId]},{style:{color,weight:5,opacity:.95,lineJoin:'round',lineCap:'round'}}).addTo(map);
     return;
   }
-  // ── STRATEGY 3: OSRM with sampled stops ──
-  const sample = sampleEvenly(stops, 6);
+  // ── STRATEGY 3: OSRM with sampled stops (max 10 to avoid URL limit) ──
+  const sample = sampleEvenly(stops, 10);
   try {
     const qs = sample.map(s=>s.lon.toFixed(5)+','+s.lat.toFixed(5)).join(';');
     const r = await fetch('https://router.project-osrm.org/route/v1/driving/'+qs+'?overview=full&geometries=geojson',{signal:AbortSignal.timeout(6000)});
     const d = await r.json();
     if (d.code==='Ok' && d.routes?.[0]?.geometry?.coordinates?.length > 2) {
-      const rawGc = d.routes[0].geometry.coordinates;
-      const gc = rawGc.filter((c,i)=>{
-        if(i===0)return true;
-        const p=rawGc[i-1];
-        return Math.sqrt((c[1]-p[1])**2+(c[0]-p[0])**2)*111 < 5;
-      });
+      const gc = d.routes[0].geometry.coordinates.filter(c=>c[1]>35.5&&c[1]<43.5&&c[0]>-9.5&&c[0]<4.5);
       if (gc.length < 2) throw new Error('bad coords after filter');
       if (lineId) routeGeomCache[lineId] = gc;
       routeLayer = L.geoJSON({type:'LineString',coordinates:gc},{style:{color,weight:5,opacity:.9,lineJoin:'round',lineCap:'round'}}).addTo(map);
