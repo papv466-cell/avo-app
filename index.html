@@ -205,34 +205,7 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 .nb-dist { font-size:11px; color:var(--text2); margin-top:2px; line-height:1.5; }
 .nb-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
 .nb-eta { font-family:var(--ff-head); font-size:20px; font-weight:800; color:var(--cyan); }
-.go-chip {
-  background:linear-gradient(135deg,var(--cyan),var(--green));
-  color:#060d1a; border-radius:8px;
-  padding:4px 12px; font-size:11px; font-weight:800;
-  cursor:pointer; font-family:var(--ff-head);
-  letter-spacing:0.5px;
-}
 
-/* ── GO PANEL ───────────────────────────────────────── */
-#go-panel {
-  display:none; margin:8px 14px 0;
-  background:linear-gradient(135deg,#061a0e,#07200e);
-  border:1px solid rgba(0,232,160,.3);
-  border-radius:var(--radius); padding:14px 16px;
-}
-.go-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.go-badge { font-family:var(--ff-head); font-size:11px; font-weight:800; color:var(--green); letter-spacing:1.5px; text-transform:uppercase; }
-.go-stop-btn { font-size:10px; color:var(--text3); border:1px solid var(--border); border-radius:6px; padding:3px 9px; cursor:pointer; }
-#go-instruction { font-size:15px; font-weight:700; margin-bottom:4px; }
-#go-sub { font-size:12px; color:var(--text2); margin-bottom:10px; }
-.go-steps { display:flex; flex-direction:column; gap:6px; }
-.go-step { display:flex; align-items:flex-start; gap:10px; font-size:12px; }
-.go-step-num { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--green); color:var(--green); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
-.go-step.done .go-step-num { background:var(--green); color:#060d1a; }
-.go-step.active .go-step-num { background:rgba(0,232,160,.15); animation:goPulse 1.5s ease infinite; }
-@keyframes goPulse { 50%{box-shadow:0 0 0 4px rgba(0,232,160,.2)} }
-.go-progress-bar { height:3px; background:var(--navy4); border-radius:99px; margin-top:10px; }
-.go-progress-fill { height:100%; background:linear-gradient(90deg,var(--green),var(--cyan)); border-radius:99px; transition:width 1s ease; }
 
 /* ── SECTION LABEL ──────────────────────────────────── */
 .sec-label {
@@ -545,50 +518,6 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
   transition: none; /* position handled by Leaflet */
 }
 
-/* ── GO DESTINATION MODAL ─────────────────────────────── */
-#go-modal {
-  display:none; position:fixed; inset:0; z-index:2000;
-  background:rgba(6,13,26,.9); backdrop-filter:blur(16px);
-  align-items:flex-end; justify-content:center;
-}
-#go-modal.show { display:flex; }
-.go-modal-sheet {
-  width:100%; max-width:480px;
-  background:var(--navy2); border-radius:24px 24px 0 0;
-  border:1px solid var(--border); border-bottom:none;
-  padding:20px 20px env(safe-area-inset-bottom,20px);
-  animation:sheetUp .35s cubic-bezier(.16,1,.3,1);
-}
-@keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-.go-modal-handle { width:36px; height:4px; background:var(--navy4); border-radius:99px; margin:0 auto 16px; }
-.go-modal-title { font-size:18px; font-weight:700; margin-bottom:4px; }
-.go-modal-sub { font-size:13px; color:var(--text2); margin-bottom:16px; }
-.go-modal-input {
-  background:var(--navy3); border:1px solid var(--border);
-  border-radius:14px; padding:13px 16px;
-  color:var(--text); font-size:14px; font-family:var(--ff-body);
-  width:100%; outline:none; margin-bottom:10px;
-  transition:border-color .2s;
-}
-.go-modal-input:focus { border-color:rgba(0,200,240,.4); }
-.go-modal-suggestions { max-height:200px; overflow-y:auto; margin-bottom:12px; }
-.go-modal-stop {
-  padding:11px 14px; border-bottom:1px solid var(--border2);
-  cursor:pointer; font-size:13px; display:flex; align-items:center; gap:10px;
-  transition:background .1s;
-}
-.go-modal-stop:active { background:var(--navy3); }
-.go-modal-stop-name { font-weight:600; flex:1; }
-.go-modal-stop-eta { font-family:'DM Mono', monospace; font-size:12px; color:var(--cyan); }
-.go-modal-btn {
-  width:100%; padding:14px; border-radius:14px;
-  background:linear-gradient(135deg,var(--cyan),var(--green));
-  color:#060d1a; font-size:15px; font-weight:700;
-  cursor:pointer; text-align:center; font-family:var(--ff-head);
-  margin-top:4px;
-}
-.go-modal-btn:active { opacity:.9; transform:scale(.98); }
-
 /* ── LIVE PULSE on bus dot ─────────────────────────────── */
 @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .live-dot { animation:livePulse 2s ease infinite; }
@@ -685,20 +614,9 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
           </div>
           <div class="nb-right">
             <div class="nb-eta" id="nearby-eta">--</div>
-            <div class="go-chip" id="go-btn" style="display:none" onclick="startGO()">GO 🚀</div>
           </div>
         </div>
-
-        <!-- GO Panel -->
-        <div id="go-panel">
-          <div class="go-header">
-            <div class="go-badge">🚀 Modo GO Activo</div>
-            <div class="go-stop-btn" onclick="stopGO()">Parar</div>
-          </div>
-          <div id="go-instruction">Calculando…</div>
-          <div id="go-sub"></div>
-          <div id="go-steps-list" class="go-steps"></div>
-          <div class="go-progress-bar"><div class="go-progress-fill" id="go-progress" style="width:0%"></div></div>
+          
         </div>
 
         <!-- Trip Planner -->
@@ -715,7 +633,6 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
         <!-- ¿Llego? -->
         <div class="sec-label">🎯 ¿Llego a tiempo?</div>
         <div class="llego-wrap">
-          <div class="llego-chips" id="llego-chips"></div>
           <div class="llego-result" id="llego-result"></div>
         </div>
 
@@ -948,16 +865,6 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
   </div>
 
 <!-- GO DESTINATION MODAL -->
-<div id="go-modal">
-  <div class="go-modal-sheet">
-    <div class="go-modal-handle"></div>
-    <div class="go-modal-title">🚀 Modo GO — ¿A dónde vas?</div>
-    <div class="go-modal-sub">Selecciona tu parada de destino en el bus <span id="go-modal-line">M135</span></div>
-    <input class="go-modal-input" id="go-dest-input" type="text" placeholder="Busca parada de destino…" oninput="goModalFilter()">
-    <div class="go-modal-suggestions" id="go-modal-stops"></div>
-    <div class="go-modal-btn" onclick="goModalCancel()">Cancelar</div>
-  </div>
-</div>
 </div><!-- app -->
 <div id="toast"></div>
 <script>
@@ -1045,12 +952,6 @@ let stopLayers   = [];
 let userMarker   = null;
 let userLat = null, userLon = null;
 let shareInterval = null;
-// GO state
-let goMode        = false;
-let goInterval    = null;
-let goOriginStop  = null;  // {stopNombre, idx}
-let goDestStop    = null;  // {stopNombre, idx}
-let goLineId      = null;
 // Smooth bus animation
 let busAnimTarget = null;  // {lat, lon} — where bus is heading
 let busAnimFrame  = null;
@@ -1141,7 +1042,6 @@ async function fetchAllLines() {
   updateNearbyBanner();
   renderFavorites();
   checkNotifications();
-  if (goMode) updateGO();
 }
 
 // ── SCHEDULE HELPERS ─────────────────────────────────────────────
@@ -1184,17 +1084,22 @@ function updateHomeCard(v) {
 
   if (!v.isOnline || !etas.length) {
     const nx = nextFromSchedule(v.lineId);
-    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '·';
+    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '—';
     document.getElementById('home-eta-unit').textContent = nx ? 'min' : '';
-    document.getElementById('home-stop').textContent     = nx ? '📅 Próximo: ' + nx.time + 'h' : '🌙 Sin más servicios hoy';
+    // Show "next service time" at line level, not fake per-stop ETA
+    document.getElementById('home-stop').textContent = nx
+      ? '📅 Próximo servicio ' + nx.time + 'h'
+      : '🌙 Sin más servicios hoy';
     document.getElementById('home-progress').style.width = '0%';
     hideLeave(); return;
   }
   if (!upcoming.length) {
     const nx = nextFromSchedule(v.lineId);
-    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '·';
+    document.getElementById('home-eta').textContent      = nx ? nx.minsAway : '—';
     document.getElementById('home-eta-unit').textContent = nx ? 'min' : '';
-    document.getElementById('home-stop').textContent     = nx ? '🔄 Próximo: ' + nx.time + 'h' : '🌙 Sin más servicios hoy';
+    document.getElementById('home-stop').textContent = nx
+      ? '🔄 Próximo servicio ' + nx.time + 'h'
+      : '🌙 Sin más servicios hoy';
     document.getElementById('home-progress').style.width = '100%';
     hideLeave(); return;
   }
@@ -1226,7 +1131,6 @@ function updateHomeCard(v) {
         : '⏰ Sal de casa en <b>' + lv + ' min</b> · Bus en ' + next.etaMinutes + ' min';
     }
   }
-  document.getElementById('go-btn').style.display = 'block';
 }
 function hideLeave() {
   const el = document.getElementById('home-leave');
@@ -1485,14 +1389,6 @@ function watchGPS() {
     userLat = pos.coords.latitude; userLon = pos.coords.longitude;
     if (mapReady) placeUserDot();
     updateNearbyBanner();
-    if (prevLat && goMode) {
-      const d = distM(prevLat, prevLon, userLat, userLon) / 1000;
-      if (d > 0.02 && d < 1.0) {
-        tripCO2 += d * CO2_PER_KM;
-        localStorage.setItem('avo_co2', tripCO2.toFixed(1));
-        updateCO2Display();
-      }
-    }
   }, null, { enableHighAccuracy:true, maximumAge:8000 });
 }
 
@@ -1551,9 +1447,14 @@ function updateNearbyBanner() {
     subMsg = lv<=0?'🏃 <b style="color:var(--red)">¡SAL AHORA!</b>':'⏰ Sal en <b style="color:var(--amber)">'+lv+' min</b>';
     if (etaLine!==activeLine) subMsg+=' · <b style="color:'+COLORS[etaLine]+'">'+etaLine+'</b>';
   } else {
-    const sc = nextFromSchedule(activeLine);
-    if (sc && sc.minsAway > 0) { etaDisplay=sc.time; etaColor='var(--amber)'; subMsg='📅 Próximo '+sc.time+'h (en '+sc.minsAway+' min)'; }
-    else subMsg = '🌙 Sin más servicios hoy';
+    // No live bus data — don't show fake schedule times for specific stops
+    // The schedule is for the LINE not for this specific stop's arrival
+    etaDisplay = '—';
+    etaColor   = 'var(--text3)';
+    const sc   = nextFromSchedule(activeLine);
+    subMsg = sc && sc.minsAway > 0
+      ? '📅 Siguiente servicio ' + sc.time + 'h'
+      : '🌙 Sin más servicios hoy';
   }
 
   const gmaps = 'https://www.google.com/maps/dir/?api=1&origin='+userLat+','+userLon+'&destination='+nearest.lat+','+nearest.lon+'&travelmode=walking';
@@ -1571,147 +1472,7 @@ function updateNearbyBanner() {
 }
 
 // ── GO MODE — Con origen y destino reales ────────────────────────
-//  1. Tap GO → abre modal bottom sheet
-//  2. Usuario elige destino de la lista de paradas de la línea activa
-//  3. App calcula: origen (parada más cercana), paradas a recorrer, cuándo salir
-function startGO() {
-  if (!userLat) { showToast('Necesito tu ubicación GPS'); return; }
-  const v = vehicles[activeLine];
-  const etas = v?.etas?.filter(e => e.etaMinutes != null && e.status !== 'passed') || [];
-  if (!etas.length) { showToast('No hay bus activo en línea ' + activeLine); return; }
-  goLineId = activeLine;
-  // Open destination picker modal
-  document.getElementById('go-modal-line').textContent = activeLine;
-  document.getElementById('go-dest-input').value = '';
-  goModalFilter('');
-  document.getElementById('go-modal').classList.add('show');
-}
-
-function goModalFilter(query) {
-  const q = normalize(query || document.getElementById('go-dest-input')?.value || '');
-  const v = vehicles[goLineId || activeLine];
-  const etas = v?.etas || stopsData[goLineId || activeLine] || [];
-  const allStops = stopsData[goLineId || activeLine] || etas;
-  const filtered = allStops.filter(s => !q || fuzzyScore(q, normalize(s.stopNombre||'')) > 0);
-  const color = COLORS[goLineId || activeLine];
-
-  // Find nearest stop (boarding)
-  const allWithC = etas.filter(e=>e.lat&&e.lon);
-  const board = getNearestStop(allWithC) || etas[0];
-
-  document.getElementById('go-modal-stops').innerHTML = filtered.slice(0,12).map((s,i) => {
-    // Find ETA for this stop
-    const etaStop = etas.find(e => normalize(e.stopNombre||'') === normalize(s.stopNombre||''));
-    const etaTxt = etaStop?.etaMinutes != null ? etaStop.etaMinutes+' min' : '';
-    return `<div class="go-modal-stop" onclick="goSelectDest('${(s.stopNombre||'').replace(/'/g,"&#39;")}')">
-      <span style="color:${color};font-size:16px">🚏</span>
-      <span class="go-modal-stop-name">${s.stopNombre || 'Parada '+(i+1)}</span>
-      ${etaTxt ? `<span class="go-modal-stop-eta">${etaTxt}</span>` : ''}
-    </div>`;
-  }).join('') || '<div style="padding:16px;color:var(--text3);font-size:13px;text-align:center">No se encontraron paradas</div>';
-}
-
-function goSelectDest(stopName) {
-  document.getElementById('go-modal').classList.remove('show');
-  const v    = vehicles[activeLine];
-  const etas = v?.etas || stopsData[activeLine] || [];
-  const allC = (v?.etas||[]).filter(e=>e.lat&&e.lon);
-  const board = getNearestStop(allC) || etas[0];
-
-  // Find indices
-  const boardIdx = etas.findIndex(e => normalize(e.stopNombre||'') === normalize(board?.stopNombre||''));
-  const destIdx  = etas.findIndex(e => normalize(e.stopNombre||'') === normalize(stopName));
-
-  goOriginStop = { ...board, idx: boardIdx >= 0 ? boardIdx : 0 };
-  goDestStop   = { stopNombre: stopName, idx: destIdx >= 0 ? destIdx : etas.length-1 };
-  goLineId     = activeLine;
-  goMode       = true;
-
-  document.getElementById('go-panel').style.display = 'block';
-  document.getElementById('go-btn').style.display   = 'none';
-  updateGO();
-  clearInterval(goInterval);
-  goInterval = setInterval(updateGO, 10000);
-  showToast('🚀 GO activado → ' + stopName);
-}
-
-function goModalCancel() {
-  document.getElementById('go-modal').classList.remove('show');
-}
-
-function stopGO() {
-  goMode = false; goOriginStop = null; goDestStop = null;
-  clearInterval(goInterval);
-  document.getElementById('go-panel').style.display = 'none';
-  document.getElementById('go-btn').style.display   = 'block';
-  showToast('GO desactivado');
-}
-
-function updateGO() {
-  if (!goMode || !goDestStop) return;
-  const v    = vehicles[goLineId || activeLine];
-  const etas = v?.etas || [];
-  const allC = etas.filter(e=>e.lat&&e.lon);
-  const board = goOriginStop || getNearestStop(allC) || etas[0];
-  const dest  = goDestStop;
-
-  const boardEta = etas.find(e=>normalize(e.stopNombre||'')===normalize(board.stopNombre||''));
-  const destEta  = etas.find(e=>normalize(e.stopNombre||'')===normalize(dest.stopNombre||''));
-  const busIn    = boardEta?.etaMinutes ?? (nextFromSchedule(goLineId)?.minsAway ?? null);
-
-  const wkMin = userLat && board.lat
-    ? Math.max(1, Math.round(distM(userLat, userLon, board.lat, board.lon) / 80))
-    : 2;
-  const leaveIn = busIn != null ? busIn - wkMin - 1 : null;
-
-  // Count stops between board and dest
-  const bIdx = goOriginStop?.idx ?? 0;
-  const dIdx = dest.idx ?? etas.length - 1;
-  const nStops = Math.max(0, dIdx - bIdx);
-
-  // Passed origin?
-  const boardPassed = boardEta?.status === 'passed';
-  // Near destination?
-  const destMins = destEta?.etaMinutes;
-
-  // Instruction
-  let instruction = '', sub = '';
-  if (!boardPassed) {
-    if (leaveIn != null && leaveIn <= 0) instruction = '🏃 ¡SAL AHORA! Bus en ' + (busIn||'?') + ' min';
-    else if (leaveIn != null)             instruction = '⏰ Sal en ' + leaveIn + ' min · Bus en ' + busIn + ' min';
-    else                                  instruction = '📅 Comprueba el horario';
-    sub = `Sube en: <b>${board.stopNombre || 'parada cercana'}</b>`;
-  } else if (destMins != null) {
-    instruction = '🚌 En el bus · Baja en ' + destMins + ' min';
-    sub = `Destino: <b>${dest.stopNombre}</b> · ${nStops} parada${nStops!==1?'s':''}`;
-  } else {
-    instruction = '🏁 ¿Ya llegaste?';
-    sub = `Destino: <b>${dest.stopNombre}</b>`;
-  }
-
-  document.getElementById('go-instruction').textContent = instruction;
-  document.getElementById('go-sub').innerHTML = sub;
-
-  const passed   = etas.filter(e=>e.status==='passed').length;
-  const progress = etas.length ? Math.round((passed/etas.length)*100) : 0;
-  document.getElementById('go-progress').style.width = progress + '%';
-
-  // Steps
-  document.getElementById('go-steps-list').innerHTML = [
-    { done:boardPassed, active:!boardPassed&&leaveIn!=null&&leaveIn<=0,
-      text:`🚶 Camina ~${wkMin}min a <b>${board.stopNombre||'parada'}</b>` },
-    { done:boardPassed, active:boardPassed,
-      text:`🚌 Sube al bus <b>${goLineId}</b>${busIn?` · llega en ${busIn} min`:''}` },
-    { done:destMins!=null&&destMins<=0, active:destMins!=null&&destMins>0,
-      text:`⬇️ Baja en <b>${dest.stopNombre}</b>${destMins?` · en ${destMins} min`:''}` }
-  ].map((s,i) =>
-    `<div class="go-step ${s.done?'done':s.active?'active':''}">
-      <div class="go-step-num">${s.done?'✓':i+1}</div>
-      <div style="font-size:12px;color:var(--text2);line-height:1.5">${s.text}</div>
-    </div>`
-  ).join('');
-}
-
+//  GO mode removed
 // ── NOTIFICATIONS ────────────────────────────────────────────────
 async function toggleNotifications() {
   if (!('Notification' in window)) { showToast('Navegador sin soporte'); return; }
@@ -1935,14 +1696,14 @@ function selectSuggestion(name){
 // ── LLEGO ────────────────────────────────────────────────────────
 function buildLlegoChips(){
   const wrap=document.getElementById('llego-chips');if(!wrap)return;
-  wrap.innerHTML=['Málaga Centro','Estación Málaga','Teatinos UMA','Alhaurín Centro'].map(n=>`<div class="llego-chip" onclick="checkLlego(this,'${n}')">${n}</div>`).join('');
+  wrap.innerHTML=['Málaga Centro','Estación Málaga','Teatinos UMA','Alhaurín Centro'].map(n=>``).join('');
 }
 function updateLlegoChips(){
   const wrap=document.getElementById('llego-chips');if(!wrap)return;
   const etas=vehicles[activeLine]?.etas?.filter(e=>e.stopNombre)||[];
   const tops=etas.slice(-5).map(e=>e.stopNombre).filter(Boolean);
   if(!tops.length){buildLlegoChips();return;}
-  wrap.innerHTML=tops.map(n=>`<div class="llego-chip" onclick="checkLlego(this,'${n.replace(/'/g,"&#39;")}')">${n}</div>`).join('');
+  wrap.innerHTML=tops.map(n=>``).join('');
 }
 function checkLlego(el,stopName){
   document.querySelectorAll('.llego-chip').forEach(c=>c.style.background='');
