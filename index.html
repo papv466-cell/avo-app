@@ -1235,37 +1235,45 @@ async function drawLine(lid) {
     return;
   }
 
-  // Stop markers — MINIMAL: only terminal stops + next stop when live
-  // This avoids the "floating dot" problem from loop routes like M135
-  const nextStop = stops.find(s => s.status === 'next');
-  const firstStop = stops[0];
-  const lastStop  = stops[stops.length - 1];
-
-  const terminalStops = [];
-  if (firstStop) terminalStops.push({...firstStop, role:'terminal'});
-  if (lastStop && lastStop !== firstStop) terminalStops.push({...lastStop, role:'terminal'});
-  if (nextStop) terminalStops.push({...nextStop, role:'next'});
-
-  terminalStops.forEach(s => {
+  // Stop markers — show ALL stops but only ones with valid Spain coords
+  // Passed stops shown faded, next stop shown large+glowing, upcoming normal
+  stops.forEach((s, i) => {
     if (!inSpain(s.lat, s.lon)) return;
-    const isNext = s.role === 'next';
-    const sz  = isNext ? 16 : 12;
-    const bg  = isNext ? color : color + '60';
-    const glow = isNext ? `box-shadow:0 0 0 6px ${color}30,0 0 18px ${color}60;` : '';
+
+    const isNext     = s.status === 'next';
+    const isPassed   = s.status === 'passed';
+    const isFirst    = i === 0;
+    const isLast     = i === stops.length - 1;
+
+    // Size: next=16, first/last terminal=12, normal=7
+    const sz   = isNext ? 16 : (isFirst || isLast ? 12 : 7);
+    const bg   = isNext  ? color :
+                 isPassed ? 'rgba(74,106,138,0.3)' :
+                 (isFirst||isLast) ? color : color + '80';
+    const border = isPassed ? 'rgba(74,106,138,0.4)' : 'rgba(255,255,255,0.9)';
+    const glow   = isNext ? `box-shadow:0 0 0 6px ${color}30,0 0 18px ${color}60;` : '';
+    const opacity = isPassed ? 'opacity:0.4;' : '';
 
     const el = document.createElement('div');
     el.style.cssText = `width:${sz}px;height:${sz}px;border-radius:50%;cursor:pointer;` +
-      `background:${bg};border:2.5px solid white;${glow}`;
+      `background:${bg};border:${isPassed?'1.5':'2'}px solid ${border};${glow}${opacity}`;
 
     const mk = L.marker([s.lat, s.lon], {
       icon: L.divIcon({html:el, className:'', iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]})
     }).addTo(map);
 
-    const etaHtml = s.etaMinutes != null
-      ? `<b style="color:${color}">🚌 Llega en ${s.etaMinutes} min</b>`
-      : (() => { const nx=nextFromSchedule(lid); return nx && nx.minsAway>0 ? `<span style="color:#ffb020">📅 Próximo ${nx.time}h</span>` : `<span style="color:#4a6a8a">Sin más servicios hoy</span>`; })();
-
-    mk.bindPopup(`<b style="font-size:13px">${s.stopNombre||'Parada'}</b><br><small>${etaHtml}</small>`);
+    let etaHtml;
+    if (s.etaMinutes != null && !isPassed) {
+      etaHtml = `<b style="color:${color}">🚌 Llega en ${s.etaMinutes} min</b>`;
+    } else if (isPassed) {
+      etaHtml = `<span style="color:#4a6a8a">Ya pasó</span>`;
+    } else {
+      const nx = nextFromSchedule(lid);
+      etaHtml = nx && nx.minsAway > 0
+        ? `<span style="color:#ffb020">📅 Próximo servicio ${nx.time}h</span>`
+        : `<span style="color:#4a6a8a">Sin más servicios hoy</span>`;
+    }
+    mk.bindPopup(`<b style="font-size:13px">${s.stopNombre||'Parada '+(i+1)}</b><br><small>${etaHtml}</small>`);
     stopLayers.push(mk);
   });
 
