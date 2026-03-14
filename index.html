@@ -574,22 +574,47 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
       <div class="page-content">
 
         <!-- Hero ETA Card -->
+        <!-- TARJETA PRINCIPAL: TU PARADA -->
         <div class="hero-card" id="hero-card">
           <div class="hero-line-badge">
             <div class="hero-line-dot" id="hero-dot"></div>
             <span id="home-live-txt">Línea M135 · Tiempo real</span>
           </div>
-          <div class="hero-eta-row">
-            <div class="hero-eta-num" id="home-eta">--</div>
-            <div class="hero-eta-unit" id="home-eta-unit">min</div>
+
+          <!-- ETA A TU PARADA — número más grande de la app -->
+          <div style="display:flex;align-items:flex-end;gap:0;margin:4px 0 2px">
+            <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;margin-right:8px">Bus en</div>
+            <div class="hero-eta-num" id="home-eta" style="font-size:72px;line-height:1">--</div>
+            <div class="hero-eta-unit" id="home-eta-unit" style="font-size:22px;margin-bottom:14px;margin-left:4px">min</div>
           </div>
-          <div class="hero-stop" id="home-stop">Cargando datos…</div>
-          <div class="hero-progress-wrap">
+          <!-- Parada cercana del usuario -->
+          <div id="nearby-stop-label" style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:4px">📍 Detectando tu parada…</div>
+          <div id="nearby-walk-label" style="font-size:12px;color:var(--text3);margin-bottom:14px"></div>
+
+          <!-- Separador -->
+          <div style="border-top:1px solid var(--border);margin:0 -2px 12px;opacity:.4"></div>
+
+          <!-- BUS: dónde está y a qué parada va — info secundaria -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div>
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:3px">Próxima parada del bus</div>
+              <div class="hero-stop" id="home-stop" style="font-size:13px;color:var(--text2)">Cargando…</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:3px">En ruta</div>
+              <div style="font-family:var(--ff-head);font-size:13px;font-weight:700" id="home-eta-bus">-- min</div>
+            </div>
+          </div>
+
+          <!-- Barra de progreso -->
+          <div class="hero-progress-wrap" style="margin-top:10px">
             <div class="hero-progress-track">
               <div class="hero-progress-fill" id="home-progress" style="width:0%"></div>
             </div>
           </div>
-          <div class="hero-stats">
+
+          <!-- Stats fila -->
+          <div class="hero-stats" style="margin-top:12px">
             <div class="hero-stat">
               <div class="hero-stat-val" id="home-co2">0g</div>
               <div class="hero-stat-lbl">CO₂ ahorrado</div>
@@ -1094,6 +1119,12 @@ function updateHomeCard(v) {
     document.getElementById('home-stop').textContent = nx
       ? '📅 Próximo servicio ' + nx.time + 'h'
       : '🌙 Sin más servicios hoy';
+    document.getElementById('home-eta-bus').textContent = nx ? nx.time + 'h' : '--';
+    document.getElementById('home-eta').textContent = nx ? nx.minsAway : '--';
+    document.getElementById('home-eta').style.color = 'var(--text3)';
+    document.getElementById('home-eta-unit').textContent = nx ? 'min' : '';
+    document.getElementById('nearby-stop-label').textContent = '📍 Activa el GPS para ver tu parada';
+    document.getElementById('nearby-walk-label').textContent = '';
     document.getElementById('home-progress').style.width = '0%';
     hideLeave(); return;
   }
@@ -1104,19 +1135,24 @@ function updateHomeCard(v) {
     document.getElementById('home-stop').textContent = nx
       ? '🔄 Próximo servicio ' + nx.time + 'h'
       : '🌙 Sin más servicios hoy';
+    document.getElementById('home-eta-bus').textContent = nx ? nx.time + 'h' : '--';
     document.getElementById('home-progress').style.width = '100%';
     hideLeave(); return;
   }
 
   const next = upcoming[0];
-  document.getElementById('home-eta').textContent      = next.etaMinutes;
-  document.getElementById('home-eta-unit').textContent = 'min';
+  // "home-eta" now shows ETA to USER'S nearest stop (updated by updateNearbyBanner)
+  // "home-eta-bus" shows ETA to bus's next stop
   const statusNext  = etas.find(e=>e.status==='next');
   const displayNext = statusNext || next;
   const stopLabel   = displayNext?.stopNombre || 'Próxima parada';
-  const dirInf = busDirection[v.lineId];
-  const stopArrow = dirInf?.label ? dirInf.label.split('→')[0] + '→ ' : '→ ';
-  document.getElementById('home-stop').textContent = stopArrow + stopLabel;
+  const dirInf      = busDirection[v.lineId];
+  const dirLabel    = dirInf?.label || '';
+  // Bus next stop goes in the secondary row
+  document.getElementById('home-stop').textContent    = stopLabel;
+  document.getElementById('home-eta-bus').textContent = (displayNext?.etaMinutes != null ? displayNext.etaMinutes + ' min' : '--');
+  // Show direction label in live text
+  document.getElementById('home-live-txt').textContent = 'Línea ' + v.lineId + (dirLabel ? ' · ' + dirLabel : ' · En servicio');
   document.getElementById('home-progress').style.width = Math.round((passed / etas.length) * 100) + '%';
 
   const busNum   = v.vehicleId ? 'Bus ' + v.vehicleId + ' · ' : '';
@@ -1240,10 +1276,21 @@ async function drawLine(lid) {
     return;
   }
 
-  // Stop markers — show ALL stops but only ones with valid Spain coords
-  // Passed stops shown faded, next stop shown large+glowing, upcoming normal
+  // Stop markers — only show stops that are close to the route geometry
+  // This prevents floating dots from loop routes with GPS gaps
+  const routePoints = routeGeomCache[lid] || [];
+  function isNearRoute(lat, lon) {
+    if (!routePoints.length) return true; // no route cached yet, show all
+    for (const c of routePoints) {
+      const dLat = lat - c[1], dLon = lon - c[0];
+      if (Math.sqrt(dLat*dLat + dLon*dLon) * 111 < 1.2) return true; // within 1.2km
+    }
+    return false;
+  }
+
   stops.forEach((s, i) => {
     if (!inSpain(s.lat, s.lon)) return;
+    if (!isNearRoute(s.lat, s.lon)) return; // skip floating dots
 
     const isNext     = s.status === 'next';
     const isPassed   = s.status === 'passed';
@@ -1499,12 +1546,30 @@ function updateNearbyBanner() {
   }
 
   const gmaps = 'https://www.google.com/maps/dir/?api=1&origin='+userLat+','+userLon+'&destination='+nearest.lat+','+nearest.lon+'&travelmode=walking';
-  document.getElementById('nearby-banner').style.display = 'flex';
+  document.getElementById('nearby-banner').style.display = 'none'; // integrated into hero card
   document.getElementById('nearby-name').textContent = nearest.stopNombre || 'Parada cercana';
   document.getElementById('nearby-dist').innerHTML =
     dM+'m · ~'+walkMin+' min a pie · '+subMsg+
     ' &nbsp;<a href="'+gmaps+'" target="_blank" style="color:var(--cyan);font-weight:600;text-decoration:none">Maps ↗</a>';
   document.getElementById('nearby-eta').innerHTML = '<span style="color:'+etaColor+';font-size:20px;font-weight:700;font-family:\'DM Mono\',monospace">'+etaDisplay+'</span>';
+
+  // Update the BIG ETA on the hero card — this is ETA to USER'S stop
+  if (etaMin != null) {
+    document.getElementById('home-eta').textContent      = etaMin;
+    document.getElementById('home-eta-unit').textContent = 'min';
+    // Color the number by urgency
+    const etaNumEl = document.getElementById('home-eta');
+    etaNumEl.style.color = etaMin<=3?'var(--red)':etaMin<=8?'var(--amber)':'var(--cyan)';
+    // Show stop name prominently
+    document.getElementById('nearby-stop-label').textContent = '📍 ' + (nearest.stopNombre || 'Tu parada');
+    document.getElementById('nearby-walk-label').textContent = '~'+walkMin+' min a pie · '+dM+'m';
+  } else {
+    document.getElementById('home-eta').textContent      = '--';
+    document.getElementById('home-eta-unit').textContent = 'min';
+    document.getElementById('home-eta').style.color      = 'var(--cyan)';
+    document.getElementById('nearby-stop-label').textContent = '📍 ' + (nearest.stopNombre || 'Parada cercana');
+    document.getElementById('nearby-walk-label').textContent = '~'+walkMin+' min a pie · '+dM+'m';
+  }
 
   if (mapReady && map && nearest.lat) {
     if (window._walkLine) { try{map.removeLayer(window._walkLine);}catch(e){} }
