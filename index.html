@@ -948,6 +948,7 @@ const SCHEDULES = {
 let activeLine   = 'M135';
 let vehicles     = {};
 let stopsData    = {};
+let busDirection = {};  // {lineId: {heading, label}} — dirección calculada por GPS
 let map = null, mapReady = false, mapLoading = false;
 let busMarker    = null;
 let routeLayer   = null;
@@ -1113,13 +1114,17 @@ function updateHomeCard(v) {
   const statusNext  = etas.find(e=>e.status==='next');
   const displayNext = statusNext || next;
   const stopLabel   = displayNext?.stopNombre || 'Próxima parada';
-  document.getElementById('home-stop').textContent = '→ ' + stopLabel;
+  const dirInf = busDirection[v.lineId];
+  const stopArrow = dirInf?.label ? dirInf.label.split('→')[0] + '→ ' : '→ ';
+  document.getElementById('home-stop').textContent = stopArrow + stopLabel;
   document.getElementById('home-progress').style.width = Math.round((passed / etas.length) * 100) + '%';
 
   const busNum   = v.vehicleId ? 'Bus ' + v.vehicleId + ' · ' : '';
   const trueNext = etas.find(e=>e.status==='next') || upcoming[0] || next;
   document.getElementById('map-bus-name').textContent = busNum + 'Línea ' + v.lineId;
-  document.getElementById('map-bus-sub').textContent  = '→ ' + (trueNext?.stopNombre || '—');
+  const dirInfo = busDirection[v.lineId];
+  const dirPrefix = dirInfo?.label ? dirInfo.label.split(' ')[0] + ' ' : '→ ';
+  document.getElementById('map-bus-sub').textContent = dirPrefix + (trueNext?.stopNombre || '—');
   document.getElementById('map-eta').textContent      = trueNext?.etaMinutes != null ? trueNext.etaMinutes : '--';
 
   if (userLat) {
@@ -1348,6 +1353,31 @@ function inSpain(lat, lon) {
   return lat > 35.5 && lat < 43.5 && lon > -9.5 && lon < 4.5 && !isNaN(lat) && !isNaN(lon);
 }
 
+// Calculate bus heading and direction label from consecutive GPS positions
+function calcDirection(lineId, newLat, newLon) {
+  const prev = busDirection[lineId]?.prevPos;
+  if (prev && inSpain(prev.lat, prev.lon)) {
+    const dLat = newLat - prev.lat;
+    const dLon = newLon - prev.lon;
+    const dist  = Math.sqrt(dLat*dLat + dLon*dLon);
+    if (dist > 0.0002) { // only update if moved > ~20m
+      const heading = Math.atan2(dLon, dLat) * 180 / Math.PI;
+      // For M135: Málaga is east (+lon), Alhaurín is west (-lon)
+      // Use longitude movement as primary direction indicator
+      const towardsMalaga = dLon > 0;
+      const stops = stopsData[lineId] || [];
+      const firstStop = stops[0]?.stopNombre || 'Inicio';
+      const lastStop  = stops[stops.length-1]?.stopNombre || 'Final';
+      const label = towardsMalaga ? '→ ' + lastStop : '→ ' + firstStop;
+      busDirection[lineId] = { heading, label, towardsMalaga, prevPos:{lat:newLat,lon:newLon} };
+      return busDirection[lineId];
+    }
+  }
+  if (!busDirection[lineId]) busDirection[lineId] = {};
+  busDirection[lineId].prevPos = {lat:newLat, lon:newLon};
+  return busDirection[lineId];
+}
+
 function animateBusTo(targetLat, targetLon) {
   if (!inSpain(targetLat, targetLon)) return; // ignore bogus GPS (Africa bug)
   if (!map || !mapReady || !busMarker) { moveBusMarkerDirect(targetLat, targetLon); return; }
@@ -1503,9 +1533,40 @@ async function toggleNotifications() {
   } else { showToast('❌ Permiso denegado'); }
 }
 function checkNotifications() {
-  if (!notifEnabled || !userLat) return;
+  if (!notifEnabled) return;
   const v = vehicles[activeLine];
   if (!v?.etas) return;
+
+  // Find the next upcoming stop with ETA
+  const upcoming = v.etas.filter(e=>e.etaMinutes!=null&&e.status!=='passed');
+  const nextStop = v.etas.find(e=>e.status==='next');
+
+  // Notify at 10 min (leave home), 3 min (go to stop), 1 min (run!)
+  if (nextStop?.etaMinutes != null) {
+    const key = activeLine + '_' + nextStop.stopNombre;
+    const eta = nextStop.etaMinutes;
+    if (eta <= 1 && lastNotifKey !== key+'_1') {
+      lastNotifKey = key+'_1';
+      new Notification('🏃 ¡SAL AHORA! — AVO Bus', {
+        body: `Bus ${activeLine} llega en 1 min a ${nextStop.stopNombre}`,
+        icon: '/icon-192.png', tag: 'avo-urgent'
+      });
+    } else if (eta <= 3 && eta > 1 && lastNotifKey !== key+'_3') {
+      lastNotifKey = key+'_3';
+      new Notification('⚡ Bus en 3 minutos — AVO', {
+        body: `Dirígete ya a ${nextStop.stopNombre}`,
+        icon: '/icon-192.png', tag: 'avo-soon'
+      });
+    } else if (eta <= 10 && eta > 3 && lastNotifKey !== key+'_10') {
+      lastNotifKey = key+'_10';
+      new Notification('🚌 Bus en camino — AVO', {
+        body: `${activeLine} llega en ${eta} min a ${nextStop.stopNombre}`,
+        icon: '/icon-192.png', tag: 'avo-info'
+      });
+    }
+  }
+
+  if (!userLat) return;
   const ns = getNearestStop(v.etas.filter(e=>e.lat&&e.lon));
   if (!ns?.etaMinutes) return;
   const m = ns.etaMinutes;
@@ -1568,7 +1629,7 @@ function toggleShare() {
     const link = APP_URL + '?' + p.toString();
     const msg  = nx
       ? `🚌 Voy en el bus *${activeLine}* → llego a *${nx.stopNombre}* en *${nx.etaMinutes} min*\n\n👆 Sígueme en tiempo real:\n${link}`
-      : `🚌 Voy en *AVO Group* · Línea *${activeLine}*\n\n👆 Sígueme:\n${link}`;
+      : `🚌 Voy en *AVO Group* · Línea *${activeLine}* ${busDirection[activeLine]?.label||''}\n\n👆 Sígueme en tiempo real:\n${link}`;
     window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
   };
   doShare();
@@ -1579,44 +1640,89 @@ function toggleShare() {
 
 // ── STOPS ────────────────────────────────────────────────────────
 function renderStops() {
-  const lid  = activeLine, list = document.getElementById('stops-list'), color = COLORS[lid];
+  const lid   = activeLine;
+  const list  = document.getElementById('stops-list');
+  const color = COLORS[lid];
   document.getElementById('stops-line-lbl').textContent = lid;
   document.querySelectorAll('.slchip').forEach((el,i)=>{
     el.className='slchip c'+LINES[i].toLowerCase()+(LINES[i]===lid?' on':'');
   });
-  const v=vehicles[lid], etas=v?.etas||[];
+  const v = vehicles[lid], etas = v?.etas || [];
   if (!etas.length) {
-    const nx=nextFromSchedule(lid);
-    list.innerHTML=`<div style="text-align:center;padding:48px 24px">
+    const nx = nextFromSchedule(lid);
+    list.innerHTML = `<div style="text-align:center;padding:48px 24px">
       <div style="font-size:40px;margin-bottom:12px">🕐</div>
       <div style="font-size:16px;font-weight:700;margin-bottom:8px">Bus no activo ahora</div>
-      ${nx?`<div style="font-size:13px;color:var(--text2)">Próximo servicio: <b style="color:${color}">${nx.time}h</b><br>En ${nx.minsAway} min</div>`:'<div style="font-size:13px;color:var(--text3)">Sin más servicios hoy</div>'}
+      ${nx?`<div style="font-size:13px;color:var(--text2)">Próximo servicio: <b style="color:${color}">${nx.time}h</b> · en ${nx.minsAway} min</div>`:'<div style="font-size:13px;color:var(--text3)">Sin más servicios hoy</div>'}
     </div>`;
-    document.getElementById('stops-status-lbl').textContent=nx?'Próximo '+nx.time+'h':'Sin servicio';
+    document.getElementById('stops-status-lbl').textContent = nx ? 'Próximo '+nx.time+'h' : 'Sin servicio';
     return;
   }
-  const upcoming=etas.filter(e=>e.etaMinutes!=null&&e.status!=='passed');
-  document.getElementById('stops-status-lbl').textContent=upcoming.length?upcoming.length+' paradas próximas':'Servicio completado';
-  list.innerHTML=etas.map((s,i)=>{
-    const isNext=s.status==='next',isPassed=s.status==='passed';
-    let pill='';
-    if(s.etaMinutes!=null&&s.status!=='passed'){
-      const cls=s.etaMinutes<=2?'now':s.etaMinutes<=10?'soon':'far';
-      pill=`<div class="eta-pill ${cls}">${s.etaMinutes} min</div>`;
-    }else if(isPassed){
-      let nb=null;
-      LINES.forEach(l2=>{const vv=vehicles[l2];if(!vv?.etas)return;const m=vv.etas.find(e=>e.etaMinutes!=null&&e.status!=='passed'&&normalize(e.stopNombre||'')===normalize(s.stopNombre||''));if(m&&(!nb||m.etaMinutes<nb.etaMinutes))nb={...m,lineId:l2};});
-      if(nb)pill=`<div class="eta-pill far" style="color:var(--amber)">${nb.lineId} ${nb.etaMinutes}m</div>`;
-      else{const sc=nextFromSchedule(lid);pill=sc?`<div class="eta-pill sched">${sc.time}</div>`:`<div class="eta-pill done">✓</div>`;}
-    }else{pill=`<div class="eta-pill done" style="opacity:.3">${i+1}</div>`;}
-    const conn=i<etas.length-1?'<div class="stop-connector"></div>':'';
-    return `<div class="stop-row">
-      <div class="stop-tl"><div class="stop-dot ${isNext?'next':isPassed?'passed':'upcoming'}"></div>${conn}</div>
+
+  const passed   = etas.filter(e=>e.status==='passed').length;
+  const upcoming = etas.filter(e=>e.etaMinutes!=null&&e.status!=='passed');
+  const nextStop = etas.find(e=>e.status==='next');
+  const lastEta  = upcoming.length ? upcoming[upcoming.length-1].etaMinutes : null;
+  const pct      = Math.round((passed / etas.length) * 100);
+  const dirInfo  = busDirection[lid];
+
+  // Header summary bar
+  const summaryParts = [];
+  if (upcoming.length) summaryParts.push(`<b style="color:${color}">${upcoming.length}</b> paradas`);
+  if (lastEta != null) summaryParts.push(`llegada en <b style="color:${color}">${lastEta} min</b>`);
+  if (dirInfo?.label) summaryParts.push(`<b>${dirInfo.label}</b>`);
+
+  document.getElementById('stops-status-lbl').textContent = upcoming.length
+    ? upcoming.length + ' paradas · ' + (lastEta ? lastEta + ' min' : '')
+    : 'Servicio completado';
+
+  // Progress bar for the stops page
+  const progressBar = `<div style="margin:0 14px 12px;background:var(--navy3);border-radius:4px;height:4px;overflow:hidden">
+    <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .5s"></div>
+  </div>`;
+
+  list.innerHTML = progressBar + etas.map((s,i) => {
+    const isNext   = s.status === 'next';
+    const isPassed = s.status === 'passed';
+    const isLast   = i === etas.length - 1;
+
+    // ETA pill
+    let pill = '';
+    if (s.etaMinutes != null && !isPassed) {
+      const urgency = s.etaMinutes <= 2 ? 'now' : s.etaMinutes <= 10 ? 'soon' : 'far';
+      const stops_away = i - passed;
+      const stopsLabel = stops_away > 0 ? `<span style="font-size:10px;opacity:.7;margin-left:3px">${stops_away} par.</span>` : '';
+      pill = `<div class="eta-pill ${urgency}">${s.etaMinutes} min${stopsLabel}</div>`;
+    } else if (isPassed) {
+      pill = `<div class="eta-pill done">✓</div>`;
+    } else {
+      pill = `<div class="eta-pill done" style="opacity:.25">${i+1}</div>`;
+    }
+
+    const conn = !isLast ? '<div class="stop-connector"></div>' : '';
+    const punctLabel = isNext ? getPunctualityLabel(lid, s.stopNombre||'') : null;
+    const punctHtml = punctLabel ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${punctLabel}</div>` : '';
+    const nextBadge = isNext ? `<span style="font-size:9px;background:${color}25;color:${color};padding:2px 6px;border-radius:99px;margin-left:6px;font-weight:600">PRÓXIMA</span>` : '';
+
+    return `<div class="stop-row" id="stop-row-${i}" style="${isNext?'background:'+color+'08;border-radius:10px;margin:0 -4px;padding:0 4px':''}">
+      <div class="stop-tl">
+        <div class="stop-dot ${isNext?'next':isPassed?'passed':'upcoming'}"></div>${conn}
+      </div>
       <div class="stop-body">
-        <div class="stop-name ${isPassed?'passed':isNext?'next':''}">${s.stopNombre||'Parada '+(i+1)}</div>${pill}
+        <div class="stop-name ${isPassed?'passed':isNext?'next':''}">${s.stopNombre||'Parada '+(i+1)}${nextBadge}</div>
+        ${pill}
       </div>
     </div>`;
   }).join('');
+
+  // Auto-scroll to next stop
+  const nextIdx = etas.findIndex(e=>e.status==='next');
+  if (nextIdx > 2) {
+    setTimeout(()=>{
+      const el = document.getElementById('stop-row-'+nextIdx);
+      if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 200);
+  }
 }
 
 // ── SCHEDULES ────────────────────────────────────────────────────
@@ -1758,6 +1864,7 @@ function connectWS(){
           const v=msg.data;
           const old=vehicles[v.lineId];
           vehicles[v.lineId]={...(vehicles[v.lineId]||{}),...v};
+          if (v.lat && v.lon) calcDirection(v.lineId, v.lat, v.lon);
           updateLineCard(v.lineId);
           if(v.lineId===activeLine){
             updateHomeCard(vehicles[v.lineId]);
@@ -1772,6 +1879,156 @@ function connectWS(){
     ws.onerror=()=>ws.close();
   }catch(e){}
 }
+</script>
+
+<script>
+
+// ── HISTORIAL DE PUNTUALIDAD ──────────────────────────────────────
+// Registra cada vez que el bus pasa por una parada con timestamp
+// Compara con el horario teórico para calcular puntualidad real
+
+function recordPunctuality(lineId, stopName, actualMinutes) {
+  try {
+    const key = 'avo_punct_' + lineId;
+    const raw = localStorage.getItem(key);
+    const data = raw ? JSON.parse(raw) : {};
+    const sKey = stopName.replace(/\s+/g,'_').substring(0,20);
+    if (!data[sKey]) data[sKey] = [];
+    const now = new Date();
+    data[sKey].push({
+      ts: now.getTime(),
+      dow: now.getDay(), // 0=Sunday
+      hour: now.getHours(),
+      etaMin: actualMinutes
+    });
+    // Keep only last 50 records per stop
+    if (data[sKey].length > 50) data[sKey] = data[sKey].slice(-50);
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function getPunctualityLabel(lineId, stopName) {
+  try {
+    const key = 'avo_punct_' + lineId;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const sKey = stopName.replace(/\s+/g,'_').substring(0,20);
+    const records = data[sKey];
+    if (!records || records.length < 3) return null;
+    const now = new Date();
+    // Filter same day-of-week ±1
+    const sameDow = records.filter(r => Math.abs(r.dow - now.getDay()) <= 1);
+    const relevant = sameDow.length >= 2 ? sameDow : records;
+    const avg = relevant.reduce((s,r)=>s+r.etaMin,0)/relevant.length;
+    const diff = Math.round(avg);
+    if (diff <= 1) return '🟢 Suele ser puntual';
+    if (diff <= 5) return `🟡 Suele llegar ~${diff} min tarde`;
+    return `🔴 Suele llegar ~${diff} min tarde`;
+  } catch(e) { return null; }
+}
+
+// Record punctuality when a stop transitions from 'next' to 'passed'
+let lastNextStop = {};
+function trackPunctuality(lineId, etas) {
+  if (!etas?.length) return;
+  const currentNext = etas.find(e=>e.status==='next');
+  const prev = lastNextStop[lineId];
+  // If previous 'next' stop is now 'passed', record its arrival
+  if (prev && currentNext?.stopNombre !== prev.stopNombre) {
+    const passedStop = etas.find(e=>normalize(e.stopNombre||'')===normalize(prev.stopNombre||'')&&e.status==='passed');
+    if (passedStop) recordPunctuality(lineId, prev.stopNombre, prev.etaAtRecord);
+  }
+  if (currentNext) lastNextStop[lineId] = {...currentNext, etaAtRecord: currentNext.etaMinutes};
+}
+
+// ── SERVICE WORKER (offline mode) ─────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // Inline SW as blob URL since we're single-file
+    const swCode = `
+const CACHE = 'avo-v1';
+const STATIC = [
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap',
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(STATIC).catch(()=>{}))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
+  ));
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  // Network-first for API calls, cache-first for static assets
+  if (url.includes('avo-bus-backend') || url.includes('virtual-office365')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(r => { const c=r.clone(); caches.open(CACHE).then(ch=>ch.put(e.request,c)); return r; })
+        .catch(() => caches.match(e.request))
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then(r => r || fetch(e.request)
+        .then(r2 => { const c=r2.clone(); caches.open(CACHE).then(ch=>ch.put(e.request,c)); return r2; })
+        .catch(() => new Response('Offline', {status:503}))
+      )
+    );
+  }
+});
+`;
+    const blob = new Blob([swCode], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl)
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.warn('SW failed:',e));
+  });
+}
+
+// ── OFFLINE STATE CACHE (localStorage) ──────────────────────────
+// Cache last known vehicle/eta state so it survives page reload offline
+function saveOfflineState() {
+  try {
+    const state = { ts: Date.now(), vehicles, stopsData };
+    localStorage.setItem('avo_offline_state', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function loadOfflineState() {
+  try {
+    const raw = localStorage.getItem('avo_offline_state');
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    const ageMin = (Date.now() - state.ts) / 60000;
+    if (ageMin > 60) return false; // don't use state older than 1 hour
+    if (state.vehicles) Object.assign(vehicles, state.vehicles);
+    if (state.stopsData) Object.assign(stopsData, state.stopsData);
+    showToast('📡 Modo offline — datos de hace ' + Math.round(ageMin) + ' min');
+    return true;
+  } catch(e) { return false; }
+}
+
+// Save state every 30s and when going offline
+setInterval(saveOfflineState, 30000);
+window.addEventListener('offline', () => {
+  showToast('📡 Sin conexión — usando datos guardados');
+  loadOfflineState();
+});
+window.addEventListener('online', () => {
+  showToast('✅ Conexión restaurada');
+  handleShareParams();
+  fetchAllLines();
+});
 </script>
 </body>
 </html>
