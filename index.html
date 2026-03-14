@@ -125,9 +125,12 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 
 /* ── BOTTOM TABS ────────────────────────────────────── */
 #tabs {
-  flex-shrink:0;
   display:flex;
+  position:fixed;
+  bottom:0; left:0; right:0;
+  z-index:200;
   background:var(--glass); backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
   border-top:1px solid var(--border);
   padding:8px 0 env(safe-area-inset-bottom,8px);
 }
