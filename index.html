@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#060d1a">
+<!-- Open Graph / WhatsApp preview -->
+<meta property="og:type"        content="website">
+<meta property="og:title"       content="AVO Group · Movilidad Inteligente">
+<meta property="og:description" content="Sigue tu bus en tiempo real. Líneas M135, M170, M143 y MUMFI en Málaga.">
+<meta property="og:image"       content="https://avo-app.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height"content="630">
+<meta property="og:url"         content="https://avo-app.vercel.app">
+<meta property="og:site_name"   content="AVO Group Bus">
+<meta name="twitter:card"       content="summary_large_image">
+<meta name="twitter:title"      content="AVO Group · Movilidad Inteligente">
+<meta name="twitter:description"content="Sigue tu bus en tiempo real. Líneas M135, M170, M143 y MUMFI.">
+<meta name="twitter:image"      content="https://avo-app.vercel.app/og-image.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AVO Group · Movilidad Inteligente</title>
@@ -992,6 +1005,75 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
     Para instalar en iPhone:<br>
     1. Pulsa <b style="color:#00c8f0">Compartir</b> <span style="font-size:14px">⎋</span> en Safari<br>
     2. Selecciona <b style="color:#00c8f0">"Añadir a pantalla de inicio"</b> <span style="font-size:14px">＋</span>
+  </div>
+</div>
+
+
+<!-- ONBOARDING MODAL — install instructions first 4 visits -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:900;align-items:flex-end;justify-content:center">
+  <div id="onboarding-sheet" style="background:#0c1929;border-radius:20px 20px 0 0;
+    border:1px solid #1a3352;width:100%;max-width:480px;padding:24px 20px 40px;
+    animation:slideUp .3s ease">
+
+    <div style="width:40px;height:4px;background:#1a3352;border-radius:2px;margin:0 auto 20px"></div>
+
+    <!-- iOS instructions -->
+    <div id="ob-ios" style="display:none">
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:6px">📲 Instala AVO Group</div>
+      <div style="font-size:13px;color:#4a6a8a;margin-bottom:20px">Accede más rápido desde tu pantalla de inicio</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Pulsa <b style="color:#fff">Compartir ⎋</b> en la barra de Safari (abajo)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Toca <b style="color:#fff">"Añadir a pantalla de inicio" ＋</b></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Pulsa <b style="color:#fff">"Añadir"</b> arriba a la derecha</div>
+        </div>
+      </div>
+      <div style="background:#ff4060;color:#fff;font-size:12px;padding:10px 14px;border-radius:10px;margin-bottom:16px">
+        ⚠️ Debe abrirse en <b>Safari</b>, no en Chrome ni en otro navegador
+      </div>
+    </div>
+
+    <!-- Android instructions -->
+    <div id="ob-android" style="display:none">
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:6px">📲 Instala AVO Group</div>
+      <div style="font-size:13px;color:#4a6a8a;margin-bottom:20px">Un toque y lo tienes en tu pantalla de inicio</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Abre esta página en <b style="color:#fff">Chrome</b></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Pulsa <b style="color:#fff">los tres puntos ⋮</b> arriba a la derecha</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#00c8f015;border:1px solid #00c8f030;
+            color:#00c8f0;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+          <div style="font-size:14px;color:#8aa4be;line-height:1.4">Toca <b style="color:#fff">"Añadir a pantalla de inicio"</b></div>
+        </div>
+      </div>
+      <div onclick="installPWA();dismissOnboarding()" style="background:linear-gradient(135deg,#00c8f0,#0090b8);
+        color:#060d1a;font-size:14px;font-weight:800;padding:14px;border-radius:12px;
+        text-align:center;cursor:pointer;margin-bottom:12px">
+        📲 Instalar ahora
+      </div>
+    </div>
+
+    <div onclick="dismissOnboarding()" style="color:#4a6a8a;font-size:13px;text-align:center;cursor:pointer;padding:8px">
+      Ahora no — recordármelo más tarde
+    </div>
   </div>
 </div>
 
@@ -2195,6 +2277,38 @@ function trackPunctuality(lineId, etas) {
   if (currentNext) lastNextStop[lineId] = {...currentNext, etaAtRecord: currentNext.etaMinutes};
 }
 
+
+// ── ONBOARDING — Mostrar instalación las 4 primeras veces ──────────────
+function checkOnboarding() {
+  // Don't show if already installed as PWA
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  const count = parseInt(localStorage.getItem('avo_visit_count') || '0');
+  const newCount = count + 1;
+  localStorage.setItem('avo_visit_count', newCount);
+  if (newCount > 4) return; // stop after 4 visits
+  const dismissed = localStorage.getItem('avo_ob_dismissed_today');
+  if (dismissed && Date.now() - parseInt(dismissed) < 3600000) return; // once per hour max
+
+  const overlay = document.getElementById('onboarding-overlay');
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  if (overlay) {
+    document.getElementById(isIOS ? 'ob-ios' : 'ob-android').style.display = 'block';
+    overlay.style.display = 'flex';
+  }
+}
+
+function dismissOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) overlay.style.display = 'none';
+  localStorage.setItem('avo_ob_dismissed_today', Date.now());
+}
+
+// Close onboarding on background tap
+document.getElementById('onboarding-overlay')?.addEventListener('click', function(e) {
+  if (e.target === this) dismissOnboarding();
+});
+
 // ── PWA INSTALL HANDLER ──────────────────────────────
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
@@ -2316,6 +2430,7 @@ window.addEventListener('online', () => {
   handleShareParams();
   fetchAllLines();
   setTimeout(checkIOSInstall, 3000);
+  setTimeout(checkOnboarding, 2000);
   // Set app URL display
   const urlEl = document.getElementById('app-url-display');
   if (urlEl) urlEl.textContent = window.location.hostname + window.location.pathname;
