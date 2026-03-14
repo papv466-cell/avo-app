@@ -589,7 +589,15 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
           </div>
           <!-- Parada cercana del usuario -->
           <div id="nearby-stop-label" style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:4px">📍 Detectando tu parada…</div>
-          <div id="nearby-walk-label" style="font-size:12px;color:var(--text3);margin-bottom:14px"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div id="nearby-walk-label" style="font-size:12px;color:var(--text3);flex:1"></div>
+            <a id="nearby-maps-btn" href="#" target="_blank" style="display:none;
+              background:#1a3352;color:#00c8f0;font-size:11px;font-weight:700;
+              padding:6px 12px;border-radius:8px;text-decoration:none;white-space:nowrap;
+              border:1px solid #00c8f030;flex-shrink:0">
+              🗺️ Cómo llegar
+            </a>
+          </div>
 
           <!-- Separador -->
           <div style="border-top:1px solid var(--border);margin:0 -2px 12px;opacity:.4"></div>
@@ -1157,6 +1165,8 @@ function updateHomeCard(v) {
     document.getElementById('nearby-stop-label').textContent = userLat
       ? '📍 Buscando parada cercana…'
       : '📍 Activa el GPS para ver tu parada';
+    const mb = document.getElementById('nearby-maps-btn');
+    if (mb) mb.style.display = 'none';
     document.getElementById('nearby-walk-label').textContent = nx
       ? 'Próximo servicio a las ' + nx.time + 'h' : '';
     document.getElementById('home-progress').style.width = '0%';
@@ -1651,6 +1661,13 @@ function updateNearbyBanner() {
     // Show stop name prominently
     document.getElementById('nearby-stop-label').textContent = '📍 ' + (nearest.stopNombre || 'Tu parada');
     document.getElementById('nearby-walk-label').textContent = '~'+walkMin+' min a pie · '+dM+'m';
+    // Show Maps button with walking directions to nearest stop
+    const mapsBtn = document.getElementById('nearby-maps-btn');
+    if (mapsBtn) {
+      const gmapsUrl = 'https://www.google.com/maps/dir/?api=1&origin='+userLat+','+userLon+'&destination='+nearest.lat+','+nearest.lon+'&travelmode=walking';
+      mapsBtn.href = gmapsUrl;
+      mapsBtn.style.display = 'block';
+    }
   } else {
     document.getElementById('home-eta').textContent      = '--';
     document.getElementById('home-eta-unit').textContent = 'min';
