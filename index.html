@@ -1276,56 +1276,102 @@ async function drawLine(lid) {
     return;
   }
 
-  // Stop markers — only show stops that are close to the route geometry
-  // This prevents floating dots from loop routes with GPS gaps
+  // ── STOP MARKERS ──────────────────────────────────────────────────────────────
+  // Mostrar todas las paradas con coordenadas válidas en España.
+  // Para puntos "sueltos" (lejos de la ruta): reducir tamaño pero seguir mostrando.
   const routePoints = routeGeomCache[lid] || [];
-  function isNearRoute(lat, lon) {
-    if (!routePoints.length) return true; // no route cached yet, show all
+
+  function distToRoute(lat, lon) {
+    if (!routePoints.length) return 0;
+    let minDist = Infinity;
     for (const c of routePoints) {
-      const dLat = lat - c[1], dLon = lon - c[0];
-      if (Math.sqrt(dLat*dLat + dLon*dLon) * 111 < 1.2) return true; // within 1.2km
+      const d = Math.sqrt((lat-c[1])**2 + (lon-c[0])**2) * 111;
+      if (d < minDist) minDist = d;
     }
-    return false;
+    return minDist;
   }
 
   stops.forEach((s, i) => {
     if (!inSpain(s.lat, s.lon)) return;
-    if (!isNearRoute(s.lat, s.lon)) return; // skip floating dots
 
-    const isNext     = s.status === 'next';
-    const isPassed   = s.status === 'passed';
-    const isFirst    = i === 0;
-    const isLast     = i === stops.length - 1;
+    const isNext   = s.status === 'next';
+    const isPassed = s.status === 'passed';
+    const isFirst  = i === 0;
+    const isLast   = i === stops.length - 1;
+    const isKey    = isNext || isFirst || isLast;
+    const dkm      = distToRoute(s.lat, s.lon); // km desde la ruta
 
-    // Size: next=16, first/last terminal=12, normal=7
-    const sz   = isNext ? 16 : (isFirst || isLast ? 12 : 7);
-    const bg   = isNext  ? color :
-                 isPassed ? 'rgba(74,106,138,0.3)' :
-                 (isFirst||isLast) ? color : color + '80';
-    const border = isPassed ? 'rgba(74,106,138,0.4)' : 'rgba(255,255,255,0.9)';
-    const glow   = isNext ? `box-shadow:0 0 0 6px ${color}30,0 0 18px ${color}60;` : '';
-    const opacity = isPassed ? 'opacity:0.4;' : '';
+    // Si está muy lejos de la ruta (>2km) y no es una parada clave → tamaño mínimo
+    const isFarFromRoute = dkm > 2 && !isKey;
+
+    // Tamaños: próxima=16, terminal=12, normal=8, lejos=5
+    const sz = isNext ? 16 : (isFirst||isLast) ? 12 : isFarFromRoute ? 5 : 8;
+
+    const bg = isNext    ? color
+             : isPassed  ? 'rgba(74,106,138,0.25)'
+             : isFarFromRoute ? color + '50'
+             : (isFirst||isLast) ? color
+             : color + '90';
+
+    const border  = isPassed ? 'rgba(74,106,138,0.35)'
+                  : isFarFromRoute ? 'rgba(255,255,255,0.4)'
+                  : 'rgba(255,255,255,0.9)';
+    const glow    = isNext ? `box-shadow:0 0 0 6px ${color}30,0 0 18px ${color}60;` : '';
+    const opacity = isPassed ? 'opacity:0.35;' : isFarFromRoute ? 'opacity:0.5;' : '';
 
     const el = document.createElement('div');
     el.style.cssText = `width:${sz}px;height:${sz}px;border-radius:50%;cursor:pointer;` +
-      `background:${bg};border:${isPassed?'1.5':'2'}px solid ${border};${glow}${opacity}`;
+      `background:${bg};border:${isPassed||isFarFromRoute?'1':'2'}px solid ${border};${glow}${opacity}`;
 
     const mk = L.marker([s.lat, s.lon], {
       icon: L.divIcon({html:el, className:'', iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]})
     }).addTo(map);
 
+    // ── Etiqueta con nombre para paradas clave ───────────────────────────────
+    if (isKey && !isFarFromRoute) {
+      const labelEl = document.createElement('div');
+      labelEl.style.cssText = `
+        position:absolute; left:${sz+4}px; top:50%; transform:translateY(-50%);
+        background:rgba(6,13,26,0.85); color:white; font-size:10px; font-weight:600;
+        padding:2px 6px; border-radius:4px; white-space:nowrap; pointer-events:none;
+        border:1px solid ${color}40;`;
+      labelEl.textContent = s.stopNombre || ('Parada '+(i+1));
+      const labelIcon = L.divIcon({
+        html: `<div style="position:relative">${labelEl.outerHTML}</div>`,
+        className:'', iconSize:[0,0], iconAnchor:[-sz/2, sz/2]
+      });
+      const labelMk = L.marker([s.lat, s.lon], {icon:labelIcon, interactive:false}).addTo(map);
+      stopLayers.push(labelMk);
+    }
+
+    // ── Popup con ETA y info completa ────────────────────────────────────────
     let etaHtml;
     if (s.etaMinutes != null && !isPassed) {
-      etaHtml = `<b style="color:${color}">🚌 Llega en ${s.etaMinutes} min</b>`;
+      const urgency = s.etaMinutes <= 2 ? '#ff4060' : s.etaMinutes <= 8 ? '#ffb020' : color;
+      const stopsAway = i - stops.filter((x,j)=>j<i&&x.status==='passed').length;
+      etaHtml = `<div style="font-size:20px;font-weight:800;color:${urgency};font-family:monospace;margin:4px 0">${s.etaMinutes} min</div>
+        <div style="font-size:11px;color:#4a6a8a">${stopsAway > 0 ? stopsAway + ' paradas · ' : ''}Llega a las ${new Date(Date.now()+s.etaMinutes*60000).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</div>`;
     } else if (isPassed) {
-      etaHtml = `<span style="color:#4a6a8a">Ya pasó</span>`;
+      const nx = nextFromSchedule(lid);
+      etaHtml = `<div style="color:#4a6a8a;font-size:12px">✓ Ya pasó</div>
+        ${nx ? `<div style="font-size:11px;color:#ffb020;margin-top:4px">Próximo servicio: ${nx.time}h</div>` : ''}`;
     } else {
       const nx = nextFromSchedule(lid);
       etaHtml = nx && nx.minsAway > 0
-        ? `<span style="color:#ffb020">📅 Próximo servicio ${nx.time}h</span>`
-        : `<span style="color:#4a6a8a">Sin más servicios hoy</span>`;
+        ? `<div style="color:#ffb020;font-size:13px;font-weight:700">${nx.time}h</div><div style="font-size:11px;color:#4a6a8a">En ${nx.minsAway} min</div>`
+        : `<div style="font-size:12px;color:#4a6a8a">Sin más servicios hoy</div>`;
     }
-    mk.bindPopup(`<b style="font-size:13px">${s.stopNombre||'Parada '+(i+1)}</b><br><small>${etaHtml}</small>`);
+
+    const walkStr = userLat && inSpain(userLat,userLon)
+      ? `<div style="font-size:11px;color:#4a6a8a;margin-top:6px;padding-top:6px;border-top:1px solid #1a3352">
+          📍 ${Math.round(distM(userLat,userLon,s.lat,s.lon))}m · ~${Math.max(1,Math.round(distM(userLat,userLon,s.lat,s.lon)/80))} min a pie</div>` : '';
+
+    mk.bindPopup(`
+      <div style="min-width:160px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#fff">${s.stopNombre||'Parada '+(i+1)}</div>
+        ${etaHtml}${walkStr}
+      </div>`, { maxWidth:220 });
+
     stopLayers.push(mk);
   });
 
