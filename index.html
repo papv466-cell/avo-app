@@ -1099,174 +1099,10 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 <!-- GO DESTINATION MODAL -->
 </div><!-- app -->
 <div id="toast"></div>
-<script>
-// ══════════════════════════════════════════════════════════════════
-// AVO BUS v6.1
-// Fixes: smooth bus animation, GO with real A→B, complete schedules,
-//        direction detection, professional typography
-// ══════════════════════════════════════════════════════════════════
 
-const BACKEND = 'https://avo-bus-backend-production.up.railway.app';
-const WS_URL  = 'wss://avo-bus-backend-production.up.railway.app/ws';
-const APP_URL = 'https://avo-app-pearl.vercel.app';
-const LINES   = ['M135','M170','M143','MUMFI'];
-const COLORS  = { M135:'#00c8f0', M170:'#00e8a0', M143:'#ffb020', MUMFI:'#a855f7' };
-const CO2_PER_KM = 89;
-
-// ── HORARIOS COMPLETOS (verificados de los documentos originales) ─
-// Teresa: estos son los horarios que nos pasaste — laborables
-const SCHEDULES = {
-  M135: {
-    // Horarios oficiales de la API — L-Sábado
-    ida:    ['06:00','07:00','07:45','08:30','09:15','10:00','10:45','11:30','13:00','13:45','14:30','16:00','16:45','17:30','18:15','19:00','19:45','20:30','21:15','22:00'],
-    vuelta: ['07:00','07:45','08:30','09:15','10:00','11:30','12:15','13:45','14:30','15:15','16:45','17:30','18:15','19:00','19:45','20:30','21:15','22:00'],
-    // Domingos y festivos
-    ida_dom:    ['07:00','08:30','10:00','11:30','13:00','14:30','16:00','17:30','19:00','20:30'],
-    vuelta_dom: ['07:00','08:30','10:00','11:30','13:00','14:30','16:00','17:30','19:00','20:30','22:00'],
-  },
-  M170: {
-    ida:    ['06:30','07:00','07:30','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','21:30'],
-    vuelta: ['07:15','07:45','08:15','08:45','09:45','10:45','11:45','12:45','13:45','14:45','15:45','16:45','17:45','18:45','19:45','20:45','21:45','22:00'],
-  },
-  M143: {
-    ida:    ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','14:30'],
-    vuelta: ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','19:30'],
-  },
-  MUMFI: {
-    ida:    ['07:30','10:00','14:30'],
-    vuelta: ['08:30','11:00','15:30'],
-  },
-};
-
-// ── NOTE ON DIRECTION ISSUE ───────────────────────────────────────
-// The tracking API only exposes ONE active service at a time per line.
-// M135 has buses going both ways simultaneously. The backend picks the
-// service with the lowest COD_SERV_REITERACION. The bus that passed
-// your stop going towards the airport is a DIFFERENT service (vuelta)
-// that we're not currently tracking. This is a backend limitation —
-// needs to be fixed in Railway by fetching both COD_SERV values.
-// For now we show the direction of whatever service we have.
-
-// ── STATE ────────────────────────────────────────────────────────
-let activeLine   = 'M135';
-let vehicles     = {};
-let stopsData    = {};
-let busDirection = {};  // {lineId: {heading, label}} — dirección calculada por GPS
-let map = null, mapReady = false, mapLoading = false;
-let busMarker    = null;
-let routeLayer   = null;
-let stopLayers   = [];
-let userMarker   = null;
-let userLat = null, userLon = null;
-let shareInterval = null;
-// Smooth bus animation
-let busAnimTarget = null;  // {lat, lon} — where bus is heading
-let busAnimFrame  = null;
-// Other
-let notifEnabled  = false;
-let lastNotifKey  = null;
-let tripCO2       = parseFloat(localStorage.getItem('avo_co2') || '0');
-let favorites     = JSON.parse(localStorage.getItem('avo_favs') || '[]');
-let prevLat = null, prevLon = null;
-
-// ── BOOT ─────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    document.getElementById('splash').style.display = 'none';
-    document.getElementById('app').style.display   = 'flex';
-    boot();
-  }, 2600);
-});
-
-async function boot() {
-  watchGPS();
-  connectWS();
-  loadFavorites();
-  updateCO2Display();
-  buildLlegoChips();
-  await Promise.all(LINES.map(preloadLine));
-  await fetchAllLines();
-  setInterval(fetchAllLines, 10000);
-  if ('Notification' in window && Notification.permission === 'granted') {
-    notifEnabled = true;
-    document.getElementById('notif-btn').classList.add('active');
-  }
-  window.addEventListener('online',  () => showToast('✅ Conexión recuperada'));
-  window.addEventListener('offline', () => showToast('⚠️ Sin conexión — datos guardados'));
-}
-
-// ── PRELOAD STOPS ────────────────────────────────────────────────
-async function preloadLine(lid) {
-  for (const ep of ['/stops/', '/lines/']) {
-    try {
-      const r = await fetch(BACKEND + ep + lid);
-      if (!r.ok) continue;
-      const d = await r.json();
-      const arr = Array.isArray(d) ? d : (d.stops || []);
-      if (!arr.length) continue;
-      stopsData[lid] = arr.map(s => ({
-        stopNombre: s.stopNombre || s.nombre || s.name || '',
-        lat: parseFloat(s.lat || s.latitude || 0),
-        lon: parseFloat(s.lon || s.lng || s.longitude || 0)
-      })).filter(s => s.lat > 35.5 && s.lat < 43.5 && s.lon > -9.5 && s.lon < 4.5 && !isNaN(s.lat) && !isNaN(s.lon));
-      return;
-    } catch(e) {}
-  }
-}
-
-// ── FETCH VEHICLES ────────────────────────────────────────────────
-async function fetchAllLines() {
-  // Fetch ida + vuelta for each line simultaneously
-  const fetchIds = [...LINES, ...LINES.map(l => l+'_V')];
-  await Promise.all(fetchIds.map(async fid => {
-    const baseLid = fid.replace('_V','');
-    const isVuelta = fid.includes('_V');
-    try {
-      const r = await fetch(BACKEND + '/vehicles/' + fid);
-      if (!r.ok) return;
-      const v = await r.json();
-      if (!v || !v.lineId) return;
-
-      vehicles[fid] = v;
-      if (v.direction?.label) busDirection[fid] = { ...v.direction, source:'api' };
-      if (!isVuelta && v.direction?.label) busDirection[baseLid] = busDirection[fid];
-      if (!isVuelta && v.etas?.length && !stopsData[baseLid]?.length) {
-        stopsData[baseLid] = v.etas.map(e => ({
-          stopNombre:e.stopNombre||'', lat:parseFloat(e.lat||0), lon:parseFloat(e.lon||0)
-        })).filter(s=>s.lat>35&&s.lat<44);
-      }
-      if (!isVuelta) updateLineCard(baseLid);
-      if (baseLid===activeLine && !isVuelta) {
-        updateHomeCard(v);
-        if (mapReady) {
-          const op=vehicles[fid+'__p']; vehicles[fid+'__p']={lat:v.lat,lon:v.lon};
-          if (op?.lat&&v.lat&&(op.lat!==v.lat||op.lon!==v.lon)) animateBusTo(v.lat,v.lon); else moveBusMarker(v);
-        }
-      } else if (baseLid===activeLine && isVuelta && v.isOnline && mapReady) {
-        showSecondBus(v);
-      }
-    } catch(e) {}
-  }));
-  updateNearbyBanner();
-  renderFavorites();
-  checkNotifications();
-  LINES.forEach(lid => trackPunctuality(lid, vehicles[lid]?.etas));
-}
-
-let secondBusMarker = null;
-function showSecondBus(v) {
-  if (!v?.lat||!v?.lon||!inSpain(v.lat,v.lon)) return;
-  const color = COLORS[v.lineId?.replace('_V','')] || '#00c8f0';
-  const el = document.createElement('div');
-  el.style.cssText=`width:36px;height:36px;border-radius:50%;background:${color}80;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:16px`;
-  el.textContent='🚌';
-  if (secondBusMarker){try{map.removeLayer(secondBusMarker);}catch(e){}}
-  secondBusMarker=L.marker([v.lat,v.lon],{icon:L.divIcon({html:el,className:'',iconSize:[36,36],iconAnchor:[18,18]}),zIndexOffset:900}).addTo(map);
-  secondBusMarker.bindPopup(`<b>Bus ${v.vehicleId||''} ${v.direction?.label||''}</b><br><small>Salida ${v.service||''}</small>`);
-}
-</script>
 
 <script>
+
 
 // ══════════════════════════════════════════════════════════════════
 // AVO BUS v6.1
@@ -2374,6 +2210,18 @@ function connectWS(){
     ws.onclose=()=>setTimeout(connectWS,5000);
     ws.onerror=()=>ws.close();
   }catch(e){}
+}
+
+let secondBusMarker = null;
+function showSecondBus(v) {
+  if (!v?.lat||!v?.lon||!inSpain(v.lat,v.lon)) return;
+  const color = COLORS[v.lineId?.replace('_V','')] || '#00c8f0';
+  const el = document.createElement('div');
+  el.style.cssText=`width:36px;height:36px;border-radius:50%;background:${color}80;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:16px`;
+  el.textContent='🚌';
+  if (secondBusMarker){try{map.removeLayer(secondBusMarker);}catch(e){}}
+  secondBusMarker=L.marker([v.lat,v.lon],{icon:L.divIcon({html:el,className:'',iconSize:[36,36],iconAnchor:[18,18]}),zIndexOffset:900}).addTo(map);
+  secondBusMarker.bindPopup(`<b>Bus ${v.vehicleId||''} ${v.direction?.label||''}</b><br><small>Salida ${v.service||''}</small>`);
 }
 
 </script>
