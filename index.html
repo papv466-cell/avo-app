@@ -1201,21 +1201,41 @@ async function boot() {
 
 // ── PRELOAD STOPS ────────────────────────────────────────────────
 async function preloadLine(lid) {
-  for (const ep of ['/stops/', '/lines/']) {
-    try {
-      const r = await fetch(BACKEND + ep + lid);
-      if (!r.ok) continue;
-      const d = await r.json();
-      const arr = Array.isArray(d) ? d : (d.stops || []);
-      if (!arr.length) continue;
-      stopsData[lid] = arr.map(s => ({
-        stopNombre: s.stopNombre || s.nombre || s.name || '',
-        lat: parseFloat(s.lat || s.latitude || 0),
-        lon: parseFloat(s.lon || s.lng || s.longitude || 0)
-      })).filter(s => s.lat > 35.5 && s.lat < 43.5 && s.lon > -9.5 && s.lon < 4.5 && !isNaN(s.lat) && !isNaN(s.lon));
-      return;
-    } catch(e) {}
+  const normalize = s => s.toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e')
+    .replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();
+  const toStop = s => ({
+    stopNombre: s.stopNombre || s.nombre || s.name || '',
+    lat: parseFloat(s.lat || s.latitude || 0),
+    lon: parseFloat(s.lon || s.lng || s.longitude || 0)
+  });
+  const inSpainFilter = s => s.lat>35.5&&s.lat<43.5&&s.lon>-9.5&&s.lon<4.5&&!isNaN(s.lat)&&!isNaN(s.lon);
+
+  // Load stops for both ida (lid) and vuelta (lid_V) and merge
+  const allStops = [];
+  for (const fetchLid of [lid, lid+'_V']) {
+    for (const ep of ['/stops/','/lines/']) {
+      try {
+        const r = await fetch(BACKEND + ep + fetchLid);
+        if (!r.ok) continue;
+        const d = await r.json();
+        const arr = Array.isArray(d) ? d : (d.stops || []);
+        if (!arr.length) continue;
+        arr.map(toStop).filter(inSpainFilter).forEach(s => allStops.push(s));
+        break;
+      } catch(e) {}
+    }
   }
+
+  if (!allStops.length) return;
+
+  // Deduplicate by stop name (keep first occurrence)
+  const seen = new Set();
+  stopsData[lid] = allStops.filter(s => {
+    const key = normalize(s.stopNombre);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ── FETCH VEHICLES ────────────────────────────────────────────────
@@ -1255,6 +1275,14 @@ async function fetchAllLines() {
   renderFavorites();
   checkNotifications();
   LINES.forEach(lid => trackPunctuality(lid, vehicles[lid]?.etas));
+  // Hide second bus marker if vuelta bus went offline
+  LINES.forEach(lid => {
+    const v = vehicles[lid+'_V'];
+    if (!v?.isOnline && secondBusMarker && activeLine===lid) {
+      try{map.removeLayer(secondBusMarker);}catch(e){}
+      secondBusMarker = null;
+    }
+  });
 }
 
 
@@ -2215,13 +2243,50 @@ function connectWS(){
 let secondBusMarker = null;
 function showSecondBus(v) {
   if (!v?.lat||!v?.lon||!inSpain(v.lat,v.lon)) return;
-  const color = COLORS[v.lineId?.replace('_V','')] || '#00c8f0';
+  const baseLid = (v.lineId||'').replace('_V','');
+  const color   = COLORS[baseLid] || '#00c8f0';
+  const dir     = v.direction?.label || '';
+  const isVuelta = dir.includes('Alhaurín') || v.dir==='vuelta';
+
+  // Vuelta bus: same emoji but lighter color + different border to distinguish
   const el = document.createElement('div');
-  el.style.cssText=`width:36px;height:36px;border-radius:50%;background:${color}80;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:16px`;
-  el.textContent='🚌';
+  el.style.cssText = [
+    `width:40px;height:40px;border-radius:50%;`,
+    `background:${isVuelta ? color+'55' : color};`,
+    `border:3px solid ${isVuelta ? 'rgba(255,255,255,0.6)' : 'white'};`,
+    `display:flex;align-items:center;justify-content:center;`,
+    `font-size:18px;`,
+    isVuelta ? `box-shadow:0 0 0 4px ${color}25;filter:hue-rotate(30deg)` : ''
+  ].join('');
+  el.textContent = isVuelta ? '🚍' : '🚌';  // different emoji for vuelta
+
+  // Direction arrow label
+  const arrow = document.createElement('div');
+  arrow.style.cssText = `position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);
+    font-size:9px;font-weight:700;color:${color};white-space:nowrap;
+    background:rgba(6,13,26,0.8);padding:1px 4px;border-radius:3px;`;
+  arrow.textContent = isVuelta ? '← Alhaurín' : '→ Málaga';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;width:40px;height:40px';
+  wrap.appendChild(el);
+  wrap.appendChild(arrow);
+
   if (secondBusMarker){try{map.removeLayer(secondBusMarker);}catch(e){}}
-  secondBusMarker=L.marker([v.lat,v.lon],{icon:L.divIcon({html:el,className:'',iconSize:[36,36],iconAnchor:[18,18]}),zIndexOffset:900}).addTo(map);
-  secondBusMarker.bindPopup(`<b>Bus ${v.vehicleId||''} ${v.direction?.label||''}</b><br><small>Salida ${v.service||''}</small>`);
+  secondBusMarker = L.marker([v.lat,v.lon],{
+    icon:L.divIcon({html:wrap.outerHTML,className:'',iconSize:[40,56],iconAnchor:[20,20]}),
+    zIndexOffset:900
+  }).addTo(map);
+
+  const service = v.service||'';
+  const eta = v.etas?.find(e=>e.status==='next');
+  const etaTxt = eta?.etaMinutes!=null ? `Próxima parada en ${eta.etaMinutes} min` : '';
+  secondBusMarker.bindPopup(
+    `<b>${isVuelta?'🚍':'🚌'} Bus ${v.vehicleId||''}</b><br>`+
+    `<small>${dir || 'Dirección desconocida'}</small><br>`+
+    (service?`<small>Salida ${service}h</small><br>`:'')+
+    (etaTxt?`<small>${etaTxt}</small>`:'')
+  );
 }
 
 </script>
