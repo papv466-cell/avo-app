@@ -471,13 +471,36 @@ async function loadL(lid){
     if(sr.status==='fulfilled'&&sr.value.ok){const d=await sr.value.json();const a=d.stops||d||[];if(a.length){const nn=nor(a);if(nn.length>=(S.st[lid]||[]).length){S.st[lid]=nn;S.st[lid+'_V']=(lid==='M135'?stSt('M135_V'):lid==='M143'?stSt('M143_V'):[...nn].reverse());}}}
     if(vr.status==='fulfilled'&&vr.value.ok){
       const d=await vr.value.json();
-      if(d?.lat){S.v[lid]={...d,ts:Date.now()};drStart(lid);}
-      else if(Array.isArray(d)&&d[0]?.lat){S.v[lid]={...d[0],ts:Date.now()};drStart(lid);}
+      if(d?.lat){
+        const next=d.etas?.find(e=>e.status==='next');
+        S.v[lid]={
+          lat:d.lat, lng:d.lon||d.lng,
+          speed:d.speedKmh||0, ts:Date.now(),
+          nextStopName:next?.stopNombre||'',
+          nextStopEta:next?(next.etaSeconds||0):null,
+          etas:(d.etas||[]).filter(e=>e.status==='next'||e.status==='upcoming').map(e=>({
+            stopName:e.stopNombre, etaMin:e.etaMinutes, stopIdx:e.stopIndex
+          })),
+          direction:d.dir||'ida'
+        };
+        drStart(lid);
+      }
     }
     if(vvr.status==='fulfilled'&&vvr.value.ok){
       const d=await vvr.value.json();
-      if(d?.lat){S.v[lid+'_V']={...d,ts:Date.now()};}
-      else if(Array.isArray(d)&&d[0]?.lat){S.v[lid+'_V']={...d[0],ts:Date.now()};}
+      if(d?.lat){
+        const next=d.etas?.find(e=>e.status==='next');
+        S.v[lid+'_V']={
+          lat:d.lat, lng:d.lon||d.lng,
+          speed:d.speedKmh||0, ts:Date.now(),
+          nextStopName:next?.stopNombre||'',
+          nextStopEta:next?(next.etaSeconds||0):null,
+          etas:(d.etas||[]).filter(e=>e.status==='next'||e.status==='upcoming').map(e=>({
+            stopName:e.stopNombre, etaMin:e.etaMinutes, stopIdx:e.stopIndex
+          })),
+          direction:d.dir||'vuelta'
+        };
+      }
     }
     if(rr.status==='fulfilled'&&rr.value.ok){const d=await rr.value.json();const p=d.geometry||d.route||d.points||[];if(p.length)S.gm[lid]=p;}
   }catch(e){}
@@ -674,8 +697,20 @@ async function pollV(){
         fetch(`${BE}/vehicles/${lid}`,{signal:to}),
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to})
       ]);
-      if(r1.ok){const d=await r1.json();if(d?.lat){S.v[lid]={...d,ts:Date.now()};drStart(lid);gotBackend=true;anyUpdate=true;}}
-      if(r2.ok){const d=await r2.json();if(d?.lat){S.v[lid+'_V']={...d,ts:Date.now()};gotBackend=true;anyUpdate=true;}}
+      if(r1.ok){const d=await r1.json();if(d?.lat){
+        const next=d.etas?.find(e=>e.status==='next');
+        S.v[lid]={lat:d.lat,lng:d.lon||d.lng,speed:d.speedKmh||0,ts:Date.now(),
+          nextStopName:next?.stopNombre||'',nextStopEta:next?(next.etaSeconds||0):null,
+          etas:(d.etas||[]).filter(e=>e.status==='next'||e.status==='upcoming').map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,stopIdx:e.stopIndex})),
+          direction:d.dir||'ida'};
+        drStart(lid);gotBackend=true;anyUpdate=true;}}
+      if(r2.ok){const d=await r2.json();if(d?.lat){
+        const next=d.etas?.find(e=>e.status==='next');
+        S.v[lid+'_V']={lat:d.lat,lng:d.lon||d.lng,speed:d.speedKmh||0,ts:Date.now(),
+          nextStopName:next?.stopNombre||'',nextStopEta:next?(next.etaSeconds||0):null,
+          etas:(d.etas||[]).filter(e=>e.status==='next'||e.status==='upcoming').map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,stopIdx:e.stopIndex})),
+          direction:d.dir||'vuelta'};
+        gotBackend=true;anyUpdate=true;}}
     }catch(e){}
     // Intento 2: API AVO directa si backend no responde
     if(!gotBackend){
