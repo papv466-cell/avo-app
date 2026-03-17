@@ -134,6 +134,8 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 #pages { flex:1; overflow:hidden; position:relative; }
 .page { position:absolute; inset:0; overflow-y:auto; display:none; }
 .page.on { display:block; }
+/* Map page needs flex layout for map to fill height */
+#page-map.on { display:flex !important; flex-direction:column; overflow:hidden; }
 .page-content { padding:0 0 80px; }
 
 /* ── BOTTOM TABS ────────────────────────────────────── */
@@ -388,10 +390,12 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
   cursor:pointer; font-size:20px; box-shadow:0 4px 20px rgba(0,0,0,.5);
 }
 .map-bottom {
-  position:absolute; bottom:0; left:0; right:0; z-index:400;
+  position:absolute; bottom:0; left:0; right:0; z-index:150;
   background:var(--glass); backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
   border-top:1px solid var(--border);
-  padding:12px 16px; display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px calc(70px + env(safe-area-inset-bottom,0px)) 16px;
+  display:flex; align-items:center; justify-content:space-between;
 }
 .map-bus-info .map-bus-name { font-size:12px; font-weight:700; font-family:var(--ff-head); }
 .map-bus-info .map-bus-sub { font-size:11px; color:var(--text2); margin-top:2px; }
@@ -756,7 +760,7 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
           </div>
           <div class="avo-actions">
             <a href="tel:952433523" class="avo-action-btn primary">📞 Llamar</a>
-            <a href="mailto:comercial@avogroup.es" class="avo-action-btn secondary">✉️ Email</a>
+            <a href="/cdn-cgi/l/email-protection#482b27252d3a2b21292408293e272f3a273d38662d3b" class="avo-action-btn secondary">✉️ Email</a>
             <a href="https://avogroup.es" target="_blank" class="avo-action-btn secondary">🌐 Web</a>
           </div>
         </div>
@@ -1000,7 +1004,7 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 <div id="toast"></div>
 
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 
 
 // ══════════════════════════════════════════════════════════════════
@@ -1151,6 +1155,8 @@ async function fetchAllLines() {
       if (!v || !v.lineId) return;
 
       vehicles[fid] = v;
+      // Keep vehicles[baseLid] always pointing to the active primary bus
+      if (!isVuelta || !vehicles[baseLid]?.isOnline) vehicles[baseLid] = v;
       if (v.direction?.label) busDirection[fid] = { ...v.direction, source:'api' };
       if (!isVuelta && v.direction?.label) busDirection[baseLid] = busDirection[fid];
       if (!isVuelta && v.etas?.length && !stopsData[baseLid]?.length) {
@@ -1517,6 +1523,19 @@ async function drawLine(lid) {
     map.fitBounds(bounds, {padding:[40,80], maxZoom:14});
   } catch(e){ try{map.fitBounds(stops.map(s=>[s.lat,s.lon]),{padding:[40,80]});}catch(e2){} }
   updateNearbyBanner();
+
+  // Update map bottom bar
+  const vMap = vehicles[lid] || vehicles[lid+'_V'];
+  if (vMap?.isOnline) {
+    updateHomeCard(vMap);
+  } else {
+    const nx = nextFromSchedule(lid);
+    const dir = busDirection[lid]?.label || '';
+    document.getElementById('map-bus-name').textContent =
+      'Línea ' + lid + (dir ? ' · ' + dir : '') + ' · ' + (nx ? 'Próximo ' + nx.time + 'h' : 'Sin servicio');
+    document.getElementById('map-bus-sub').textContent = nx ? 'En ' + nx.minsAway + ' min' : '';
+    document.getElementById('map-eta').textContent = nx ? nx.minsAway : '--';
+  }
 }
 
 // Route geometry cache keyed by lineId
@@ -1793,9 +1812,28 @@ async function toggleNotifications() {
   } else { showToast('❌ Permiso denegado'); }
 }
 function checkNotifications() {
-  if (!notifEnabled) return;
   const v = vehicles[activeLine];
   if (!v?.etas) return;
+
+  // Always update the home leave banner (no permission needed)
+  if (userLat) {
+    const nearest = getNearestStop(v.etas.filter(e=>e.lat&&e.lon));
+    if (nearest?.etaMinutes != null && nearest.etaMinutes <= 10) {
+      const el = document.getElementById('home-leave');
+      if (el) {
+        const walkMin = Math.max(1, Math.round(distM(userLat,userLon,nearest.lat,nearest.lon)/80));
+        const lv = nearest.etaMinutes - walkMin - 1;
+        el.style.display = 'block';
+        el.style.background = nearest.etaMinutes<=3 ? 'rgba(255,64,96,0.15)' : 'rgba(0,200,240,0.08)';
+        el.style.border = `1px solid ${nearest.etaMinutes<=3 ? '#ff4060' : 'var(--cyan)'}40`;
+        el.innerHTML = lv<=0
+          ? `🏃 <b style="color:var(--red)">¡SAL AHORA!</b> Bus en ${nearest.etaMinutes} min a ${nearest.stopNombre}`
+          : `⏰ Sal en <b style="color:var(--amber)">${lv} min</b> · Bus en ${nearest.etaMinutes} min a ${nearest.stopNombre}`;
+      }
+    }
+  }
+
+  if (!notifEnabled) return;
 
   // Find the next upcoming stop with ETA
   const upcoming = v.etas.filter(e=>e.etaMinutes!=null&&e.status!=='passed');
@@ -2716,10 +2754,4 @@ window.addEventListener('online', () => {
   setTimeout(checkIOSInstall, 3000);
   setTimeout(checkOnboarding, 2000);
   // Set app URL display
-  const urlEl = document.getElementById('app-url-display');
-  if (urlEl) urlEl.textContent = window.location.hostname + window.location.pathname;
-});
-</script>
-</body>
-
-</html>
+  const urlEl = document
