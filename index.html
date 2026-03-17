@@ -214,9 +214,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--t1);font
     <div class="live" id="live-badge"><div class="ld"></div>EN VIVO</div>
   </div>
   <div class="hs" id="hs">
+    <!-- Nearest stop - most important info -->
     <div id="near-w"></div>
-    <div class="sl">Próximos buses</div>
+    <!-- Line cards - simple: badge + name + next time -->
+    <div class="sl">Líneas</div>
     <div id="lcards"></div>
+    <!-- Search at bottom -->
     <div class="sbar" onclick="openS()" style="margin-top:4px">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--t3);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" placeholder="Buscar parada…" readonly>
@@ -804,23 +807,19 @@ function mkCards(){
   const el=document.getElementById('lcards');if(!el)return;
   el.innerHTML='';
   for(const[lid,ln]of Object.entries(LL)){
-    const d=document.createElement('div');d.className='lc';d.style.setProperty('--lc',ln.col);
-    d.id='lc-'+lid;
+    const d=document.createElement('div');
+    d.className='lc';
+    d.style.setProperty('--lc',ln.col);
     d.innerHTML=`
-      <div class="lc-top">
-        <div class="lb" style="background:${h2r(ln.col,.15)};color:${ln.col}">${lid}</div>
-        <div class="lc-info">
-          <div class="ln">${ln.nm}</div>
-          <div class="lc-status" id="lst${lid}">
-            <span style="color:var(--t4)">Calculando…</span>
-          </div>
-        </div>
-        <div class="lc-eta-big">
-          <div class="lc-eta-num" id="letn${lid}" style="color:var(--t4)">—</div>
-          <div class="lc-eta-unit" id="letu${lid}">min</div>
-        </div>
+      <div class="lb" style="background:${h2r(ln.col,.15)};color:${ln.col}">${lid}</div>
+      <div class="li">
+        <div class="ln">${ln.nm}</div>
+        <div class="ld2" id="hd${lid}">Calculando…</div>
       </div>
-      <div class="lc-bar"><div class="lc-bar-fill" id="lbar${lid}" style="width:0%"></div></div>`;
+      <div class="le">
+        <div class="lev" id="he${lid}" style="color:var(--t3)">—</div>
+        <div class="leu" id="heu${lid}">min</div>
+      </div>`;
     d.onclick=()=>{S.ml=lid;S.sl=lid;go('pm',document.getElementById('nb1'));};
     el.appendChild(d);
   }
@@ -829,86 +828,68 @@ function updETA(){
   const now=new Date();
   const nowM=now.getHours()*60+now.getMinutes();
   const dow=now.getDay();
-  const dayKey=dow>=1&&dow<=5?'lv':dow===6?'sa':'do';
+  const dk=dow>=1&&dow<=5?'lv':dow===6?'sa':'do';
 
   for(const[lid,ln]of Object.entries(LL)){
-    const numEl=document.getElementById(`letn${lid}`);
-    const unitEl=document.getElementById(`letu${lid}`);
-    const statEl=document.getElementById(`lst${lid}`);
-    const barEl=document.getElementById(`lbar${lid}`);
+    const numEl=document.getElementById('he'+lid);
+    const unitEl=document.getElementById('heu'+lid);
+    const descEl=document.getElementById('hd'+lid);
     if(!numEl)continue;
 
-    const v=S.v[lid]||S.v[lid+'_V'];
-    // Adjust ETAs for elapsed time since last GPS update
-    const elapsed_s=v?.ts?Math.round((Date.now()-v.ts)/1000):0;
-    const sched=SCH[lid]?.[dayKey];
-
-    // Check both directions for the best ETA
+    // Check if any bus is active
     const vi=S.v[lid], vv=S.v[lid+'_V'];
-    const best=(!vi?.nextStopEta&&!vv?.nextStopEta)?null:
-      (!vi?.nextStopEta?vv:(!vv?.nextStopEta?vi:
-      (vi.nextStopEta<vv.nextStopEta?vi:vv)));
-    const v_home=best||v; // use best bus for home card
-    if(v_home?.nextStopEta!=null){
-      // BUS ACTIVO con GPS real
-      const elapsed_best=v_home.ts?Math.round((Date.now()-v_home.ts)/1000):0;
-      const rawEta=Math.max(0,v_home.nextStopEta-elapsed_best);
-      const m=Math.round(rawEta/60);
-      const col=m<3?'var(--green)':m<10?'var(--cyan)':'var(--amber)';
-      numEl.textContent=m;
-      numEl.style.color=col;
-      unitEl.textContent='min';
-      // Barra de progreso (60min = 100%)
-      const pct=Math.max(5,Math.min(100,100-(m/60*100)));
-      if(barEl){barEl.style.width=pct+'%';barEl.style.background=col;}
-      // Estado
-      const dir=S.v[lid]?ln.ida:ln.vta;
-      if(statEl){
-        const ago=v_home.ts?Math.round((Date.now()-v_home.ts)/1000):999;
-        const gps=ago<90?'<span style="color:var(--green)">●</span>':'<span style="color:var(--amber)">⚠️</span>';
-        const buses=[S.v[lid],S.v[lid+'_V']].filter(b=>b?.lat);
-        const dirs=buses.map(b=>b.direction==='vuelta'?LL[lid].vta:LL[lid].ida).join(' + ');
-        statEl.innerHTML=`${gps} ${buses.length} bus${buses.length>1?'es':''} · ${dirs}${v_home.nextStopName?' · '+v_home.nextStopName:''}`;
-      }
-    } else if(sched) {
-      // BUS NO ACTIVO → próximo horario
-      const allTimes=[...sched.ida,...sched.vta].map(t=>{
-        const[h,m]=t.split(':').map(Number);return h*60+m;
-      }).sort((a,b)=>a-b);
-      const next=allTimes.find(t=>t>nowM);
-      if(next!=null){
-        const diffM=next-nowM;
-        const hh=Math.floor(next/60).toString().padStart(2,'0');
-        const mm=(next%60).toString().padStart(2,'0');
-        if(diffM<=60){
-          numEl.textContent=diffM;
-          numEl.style.color='var(--t2)';
-          unitEl.textContent='min (horario)';
-        } else {
-          numEl.textContent=`${hh}:${mm}`;
-          numEl.style.color='var(--t3)';
-          unitEl.style.fontSize='14px';
-          unitEl.textContent='próx. salida';
-        }
-        if(barEl){barEl.style.width='0%';}
-        // Próximas 3 salidas
-        const nexts=allTimes.filter(t=>t>=nowM).slice(0,3).map(t=>{
-          const h=Math.floor(t/60).toString().padStart(2,'0');
-          const m=(t%60).toString().padStart(2,'0');
-          return `${h}:${m}`;
-        });
-        if(statEl) statEl.innerHTML=`<span style="color:var(--t4)">Sin bus activo</span>&nbsp;·&nbsp;<span style="color:var(--t3)">${nexts.join(' · ')}</span>`;
+    const busActive=vi?.lat||vv?.lat;
+
+    if(busActive){
+      // Find best ETA across both directions
+      const etaI=vi?.nextStopEta!=null?Math.max(0,Math.round((vi.nextStopEta-(vi.ts?(Date.now()-vi.ts)/1000:0))/60)):999;
+      const etaV=vv?.nextStopEta!=null?Math.max(0,Math.round((vv.nextStopEta-(vv.ts?(Date.now()-vv.ts)/1000:0))/60)):999;
+      const bestEta=Math.min(etaI,etaV);
+      const bestV=etaI<=etaV?vi:vv;
+      
+      if(bestEta<999){
+        numEl.textContent=bestEta;
+        numEl.style.color=bestEta<3?'var(--green)':bestEta<10?'var(--cyan)':'var(--t2)';
+        unitEl.textContent='min';
+        const dir=bestV===vi?ln.ida:ln.vta;
+        descEl.textContent='● Bus activo · '+dir+(bestV?.nextStopName?' · '+bestV.nextStopName:'');
+        descEl.style.color='var(--green)';
       } else {
-        numEl.textContent='—';
-        numEl.style.color='var(--t4)';
-        unitEl.textContent='sin más hoy';
-        if(statEl) statEl.innerHTML=`<span style="color:var(--t4)">Sin servicio hoy</span>`;
-        if(barEl) barEl.style.width='0%';
+        numEl.textContent='●';
+        numEl.style.color='var(--green)';
+        unitEl.textContent='';
+        descEl.textContent='Bus en ruta';
+        descEl.style.color='var(--green)';
       }
     } else {
-      numEl.textContent='—';
-      unitEl.textContent='';
-      if(statEl) statEl.innerHTML=`<span style="color:var(--t4)">—</span>`;
+      // No active bus - show next scheduled departure
+      const sched=SCH[lid]?.[dk];
+      if(sched){
+        const allT=[...sched.ida,...sched.vta]
+          .map(t=>{const[h,m]=t.split(':').map(Number);return h*60+m;})
+          .sort((a,b)=>a-b);
+        const nxt=allT.find(t=>t>nowM);
+        if(nxt!=null){
+          const diff=nxt-nowM;
+          if(diff<=90){
+            numEl.textContent=diff;
+            unitEl.textContent='min';
+          } else {
+            const hh=Math.floor(nxt/60).toString().padStart(2,'0');
+            const mm=(nxt%60).toString().padStart(2,'0');
+            numEl.textContent=hh+':'+mm;
+            unitEl.textContent='';
+          }
+          numEl.style.color='var(--t2)';
+          descEl.textContent='Según horario';
+          descEl.style.color='var(--t4)';
+        } else {
+          numEl.textContent='—';
+          unitEl.textContent='';
+          descEl.textContent='Sin más salidas hoy';
+          descEl.style.color='var(--t4)';
+        }
+      }
     }
   }
 }
@@ -1233,7 +1214,7 @@ function toast(msg,ms=2500){const el=document.getElementById('tst');el.textConte
 
 // ── UTILS ──
 function hav(a1,o1,a2,o2){const R=6371000,r=Math.PI/180,dl=(a2-a1)*r,do2=(o2-o1)*r;const a=Math.sin(dl/2)**2+Math.cos(a1*r)*Math.cos(a2*r)*Math.sin(do2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
-function h2r(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16,b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${a})`;}
+function h2r(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${a})`;}
 
 document.addEventListener('DOMContentLoaded',boot);
 </script>
