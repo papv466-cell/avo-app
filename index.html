@@ -405,7 +405,11 @@ async function boot(){
   updETA();
   rStops();
   rSched();
-  // STEP 3: Try network in background (improves data if backend is up)
+  // STEP 3: Load real road geometry via OSRM routing (free, no API key needed)
+  for(const lid of Object.keys(LL)){
+    loadOSRM(lid);
+  }
+  // STEP 4: Try backend in background
   gpsW();
   wsC();
   Promise.all(Object.keys(LL).map(l=>loadL(l))).then(()=>{
@@ -415,6 +419,29 @@ async function boot(){
   }).catch(()=>{});
   setInterval(pollV,12000);
   setInterval(updETA,6000);
+}
+
+// Load real road geometry from OSRM (OpenStreetMap routing, free)
+async function loadOSRM(lid){
+  const stops=S.st[lid];
+  if(!stops||stops.length<2)return;
+  // Use every 3rd stop as waypoint to stay under URL limit (max ~50 waypoints)
+  const wpts=stops.filter((_,i)=>i===0||i===stops.length-1||i%3===0);
+  const coords=wpts.map(s=>`${s.G},${s.A}`).join(';');
+  const url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+  try{
+    const to=AbortSignal.timeout?AbortSignal.timeout(8000):undefined;
+    const r=await fetch(url,{signal:to});
+    if(!r.ok)return;
+    const d=await r.json();
+    const pts=d.routes?.[0]?.geometry?.coordinates;
+    if(pts&&pts.length>2){
+      // OSRM returns [lng,lat], Leaflet needs [lat,lng]
+      S.gm[lid]=pts.map(p=>[p[1],p[0]]);
+      // Update map if currently showing this line
+      if(S.mi&&S.ml===lid){clRt();drRt(lid);}
+    }
+  }catch(e){}
 }
 
 // ── DATA ──
@@ -454,7 +481,7 @@ async function loadAVOGeom(lid){
     if(!r.ok)return;
     const d=await r.json();
     const p=(d.puntos||d.recorrido||d||[]).map(x=>[+x.LAT||+x.lat,+x.LNG||+x.lng||+x.LON||+x.lon]).filter(x=>x[0]&&x[1]);
-    if(p.length){S.gm[lid]=p;if(S.mi&&S.ml===lid){clRt();drRt(lid);}}
+    if(p.length>10){S.gm[lid]=p;if(S.mi&&S.ml===lid){clRt();drRt(lid);}}
   }catch(e){}
 }
 function nor(a){return a.map(s=>({N:s.NOMBRE||s.nombre||s.name||s.DESCRIPCION||'',A:+(s.LAT||s.lat||s.LATITUD||0),G:+(s.LNG||s.lng||s.LON||s.lon||s.LONGITUD||0),raw:s})).filter(s=>s.N&&s.A&&s.G);}
@@ -700,6 +727,8 @@ function swLine(lid){
   S.ml=lid;
   document.querySelectorAll('.lp').forEach((b,i)=>{const l=Object.keys(LL)[i];b.classList.toggle('on',l===lid);b.style.background=l===lid?LL[l].col:'';b.style.color=l===lid?'#000':'';});
   clRt();clSm();drRt(lid);drSm(lid);updBuses();fitL(lid);
+  // Load road geometry if not already done
+  if(!S.gm[lid]||S.gm[lid].length<10) loadOSRM(lid);
 }
 function clRt(){Object.values(S.rl).forEach(l=>{try{S.lmap.removeLayer(l)}catch(e){}});S.rl={};}
 function clSm(){S.sm_arr.forEach(m=>{try{S.lmap.removeLayer(m)}catch(e){}});S.sm_arr=[];}
@@ -764,14 +793,28 @@ function updUMkr(){
   if(S.um)S.lmap.removeLayer(S.um);
   S.um=L.marker([S.ulat,S.ulng],{icon,zIndexOffset:2000}).addTo(S.lmap);
 }
-function rctr(){if(!S.lmap)return;if(S.ulat)S.lmap.setView([S.ulat,S.ulng],15);else fitL(S.ml);}
+function rctr(){
+  if(!S.lmap)return;
+  if(S.ulat&&S.ulng){
+    S.lmap.setView([S.ulat,S.ulng],15);
+    if(!S.um)updUMkr();
+    return;
+  }
+  // Request GPS if not yet granted
+  if(!navigator.geolocation){toast('GPS no disponible');return;}
+  navigator.geolocation.getCurrentPosition(
+    p=>{S.ulat=p.coords.latitude;S.ulng=p.coords.longitude;updUMkr();S.lmap.setView([S.ulat,S.ulng],15);},
+    ()=>toast('Activa el GPS en tu navegador'),
+    {enableHighAccuracy:true,timeout:8000}
+  );
+}
 
 // ── DEAD RECKONING ──
 function drStart(lid){
   if(S.drt[lid])clearInterval(S.drt[lid]);
   S.drt[lid]=setInterval(()=>{
     const v=S.v[lid];if(!v?.lat||!v?.ts)return;
-    if(S.pg!=='pm'||S.ml!==lid)return;
+    if(S.pg!=='pm'||S.ml!==lid||!S.lmap)return;
     const el=(Date.now()-v.ts)/1000;if(el<2||el>90)return;
     const spd=Math.max(5,Math.min(+v.speed||20,80))*1000/3600;
     const mv=spd*el;
