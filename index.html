@@ -983,62 +983,49 @@ function updBP(){
   if(!S.lmap||!S.mi){el.classList.remove('on');return;}
   const lid=S.ml;
   const dir=S.mapDir||'i';
-  const v=dir==='i'?S.v[lid]:S.v[lid+'_V'];
+  // Use the bus whose direction matches the selected map direction
+  // If both active, prefer the one matching the button
+  const vMatch=dir==='i'?S.v[lid]:S.v[lid+'_V'];
+  const vOther=dir==='i'?S.v[lid+'_V']:S.v[lid];
+  const v=vMatch?.lat?vMatch:(vOther?.lat?vOther:null);
   if(!v?.lat){el.classList.remove('on');return;}
   el.classList.add('on');
 
+  // Direction label
+  const isIda=v.direction==='ida'||(v===S.v[lid]&&!v.direction);
   document.getElementById('bp-l').textContent='🚌 '+lid;
-  document.getElementById('bp-d').textContent=dir==='i'?LL[lid].ida:LL[lid].vta;
+  document.getElementById('bp-d').textContent=isIda?LL[lid].ida:LL[lid].vta;
 
+  // GPS status
   const ago=v.ts?Math.round((Date.now()-v.ts)/1000):999;
   const ge=document.getElementById('bp-g');
-  ge.innerHTML=ago<90?'<span class="gok">● GPS vivo</span>':'⚠️ GPS '+ago+'s';
+  if(ge) ge.innerHTML=ago<90?'<span class="gok">● GPS vivo</span>':'<span style="color:var(--amber)">⚠️ '+ago+'s</span>';
 
-  // Use our static stop list to find upcoming stops
-  const stKey=dir==='v'?lid+'_V':lid;
-  const stops=S.st[stKey]||[];
+  // Upcoming stops from backend ETAs (already correct order and direction)
   const se=document.getElementById('bp-s');
-
-  // Find current position on route using bus lat/lng
-  let busIdx=0;
-  if(stops.length>0&&v.lat){
-    let minD=Infinity;
-    stops.forEach((s,i)=>{
-      if(!s.A||!s.G)return;
-      const d=hav(v.lat,v.lng||v.lon||0,s.A,s.G);
-      if(d<minD){minD=d;busIdx=i;}
-    });
-  }
-
-  // Show next 5 upcoming stops with ETAs from backend or calculated from schedule
-  const upcoming=stops.slice(busIdx+1, busIdx+7);
-  if(upcoming.length===0){
-    se.innerHTML='<div style="font-size:11px;color:var(--t3);padding:8px">Llegando al destino</div>';
-    return;
-  }
-
-  // Match backend ETAs by stop name
-  const backendEtas=v.etas||[];
+  const etas=v.etas||[];
   const elapsed=v.ts?Math.round((Date.now()-v.ts)/1000):0;
 
-  se.innerHTML=upcoming.map((s,i)=>{
-    // Try to find matching ETA from backend
-    const be=backendEtas.find(e=>{
-      const n1=(e.stopName||'').toLowerCase().trim();
-      const n2=(s.N||'').toLowerCase().trim();
-      return n1===n2||n1.includes(n2.split(',')[0].toLowerCase())||n2.includes(n1.split(',')[0].toLowerCase());
-    });
-    let mins=null;
-    if(be?.etaMin!=null) mins=Math.max(0,Math.round((be.etaMin*60-elapsed)/60));
-    else if(v.nextStopEta!=null) mins=Math.max(0,Math.round((v.nextStopEta+(i+1)*120-elapsed)/60));
-
-    const col=mins===0?'var(--green)':mins!=null&&mins<=2?'var(--green)':'var(--cyan)';
-    return`<div class="bsc ${i===0?'cur':''}">
-      <div class="bscn">${(s.N||'').split(',')[0]}</div>
-      <div class="bsce" style="color:${col}">${mins!=null?mins:'—'}</div>
+  if(etas.length>0){
+    se.innerHTML=etas.slice(0,6).map((e,i)=>{
+      const adj=e.etaMin!=null?Math.max(0,Math.round((e.etaMin*60-elapsed)/60)):null;
+      const col=adj===0?'var(--green)':adj!=null&&adj<=2?'var(--green)':'var(--cyan)';
+      return`<div class="bsc ${i===0?'cur':''}">
+        <div class="bscn">${(e.stopName||'').split(',')[0]}</div>
+        <div class="bsce" style="color:${col}">${adj!=null?adj:'—'}</div>
+        <div class="bscu">min</div>
+      </div>`;
+    }).join('');
+  } else if(v.nextStopName){
+    const m=v.nextStopEta!=null?Math.max(0,Math.round((v.nextStopEta-elapsed)/60)):null;
+    se.innerHTML=`<div class="bsc cur">
+      <div class="bscn">${v.nextStopName.split(',')[0]}</div>
+      <div class="bsce" style="color:var(--cyan)">${m!=null?m:'—'}</div>
       <div class="bscu">min</div>
     </div>`;
-  }).join('');
+  } else {
+    se.innerHTML='<div style="font-size:11px;color:var(--t3);padding:8px">Sin datos de paradas</div>';
+  }
 }
 function updMStat(){
   const el=document.getElementById('mstat');
