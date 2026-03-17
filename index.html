@@ -739,8 +739,14 @@ async function pollV(){
       }catch(e){}
     }
   }
-  if(anyUpdate||true){updETA();}
-  if(S.pg==='pm')updBuses();
+  updETA();
+  if(S.pg==='pm'){
+    updBuses();
+    // If no vehicle data at all, try direct AVO API
+    const hasAny=Object.keys(S.v).some(k=>S.v[k]?.lat);
+    if(!hasAny) console.log('[AVO] No vehicle data yet, backend may be slow');
+    else console.log('[AVO] Vehicles:', Object.keys(S.v).filter(k=>S.v[k]?.lat).map(k=>k+':'+S.v[k].lat.toFixed(4)));
+  }
   if(S.pg==='ps')rStops();
 }
 
@@ -942,10 +948,13 @@ function drSm(lid){
   });
 }
 function updBuses(){
+  if(!S.lmap||!S.mi)return;
   Object.values(S.bm).forEach(m=>{try{S.lmap.removeLayer(m)}catch(e){}});S.bm={};
   const lid=S.ml;
-  if(S.v[lid]?.lat)S.bm[lid]=mkBM(S.v[lid],lid,'i');
-  if(S.v[lid+'_V']?.lat)S.bm[lid+'_V']=mkBM(S.v[lid+'_V'],lid,'v');
+  const vi=S.v[lid], vv=S.v[lid+'_V'];
+  console.log('[AVO] updBuses lid='+lid,'ida:',vi?vi.lat+','+vi.lng:'none','vuelta:',vv?vv.lat+','+vv.lng:'none');
+  if(vi?.lat&&vi?.lng){const m=mkBM(vi,lid,'i');if(m)S.bm[lid]=m;}
+  if(vv?.lat&&vv?.lng){const m=mkBM(vv,lid,'v');if(m)S.bm[lid+'_V']=m;}
   updBP();updMStat();
 }
 function mkBM(v,lid,dir){
@@ -1102,7 +1111,12 @@ function go(pid,btn){
   document.getElementById(pid).classList.add('on');
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');S.pg=pid;
-  if(pid==='pm')initMap();
+  if(pid==='pm'){
+    initMap();
+    // Retry after data loads if map was empty
+    setTimeout(()=>{if(S.pg==='pm')updBuses();},1200);
+    setTimeout(()=>{if(S.pg==='pm')updBuses();},3000);
+  }
   if(pid==='ps'){mkTabs();rStops();}
   if(pid==='psc'){mkTabs();rSched();}
 }
