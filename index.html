@@ -226,7 +226,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--t1);font
 <div id="pm" class="pg">
   <div class="map-top">
     <div class="lpills" id="mpills"></div>
-    <div class="mpill" id="mstat"><div class="sp" style="width:11px;height:11px;border-width:1.5px"></div> Cargando…</div>
+    <div class="mpill" id="mdir-ida" onclick="setMapDir('i')" style="cursor:pointer;color:var(--cyan)">→ Ida</div>
+    <div class="mpill" id="mdir-vta" onclick="setMapDir('v')" style="cursor:pointer">← Vuelta</div>
+    <div class="mpill" id="mstat"></div>
   </div>
   <div id="map"></div>
   <div class="mrc" onclick="rctr()">📍</div>
@@ -383,6 +385,7 @@ const SCH={
 
 // STATE
 const S={
+  mapDir:'i',
   v:{},st:{},gm:{},
   ulat:null,ulng:null,
   pg:'ph',ml:'M135',sl:'M135',sd:'i',scl:'M135',scd:'lv',
@@ -409,7 +412,8 @@ async function boot(){
   }catch(e){console.error('BOOT ERROR:',e);document.getElementById('lcards').innerHTML='<div style="color:red;padding:20px">Error: '+e.message+'</div>';}
   // STEP 3: Load real road geometry via OSRM routing (free, no API key needed)
   for(const lid of Object.keys(LL)){
-    loadOSRM(lid);
+    loadOSRM(lid,'i');
+    loadOSRM(lid,'v');
   }
   // STEP 4: Try backend in background
   gpsW();
@@ -424,11 +428,13 @@ async function boot(){
 }
 
 // Load real road geometry from OSRM (OpenStreetMap routing, free)
-async function loadOSRM(lid){
-  const stops=S.st[lid];
+async function loadOSRM(lid,dir){
+  dir=dir||'i';
+  const key=dir==='v'?lid+'_V':lid;
+  const stops=S.st[key]||S.st[lid];
   if(!stops||stops.length<2)return;
-  // Use every 3rd stop as waypoint to stay under URL limit (max ~50 waypoints)
-  const wpts=stops.filter((_,i)=>i===0||i===stops.length-1||i%3===0);
+  // Use first, last, and every 4th stop to stay under OSRM URL limit
+  const wpts=stops.filter((_,i)=>i===0||i===stops.length-1||i%4===0);
   const coords=wpts.map(s=>`${s.G},${s.A}`).join(';');
   const url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
   try{
@@ -438,10 +444,8 @@ async function loadOSRM(lid){
     const d=await r.json();
     const pts=d.routes?.[0]?.geometry?.coordinates;
     if(pts&&pts.length>2){
-      // OSRM returns [lng,lat], Leaflet needs [lat,lng]
-      S.gm[lid]=pts.map(p=>[p[1],p[0]]);
-      // Update map if currently showing this line
-      if(S.mi&&S.ml===lid){clRt();drRt(lid);}
+      S.gm[key]=pts.map(p=>[p[1],p[0]]);
+      if(S.mi&&S.ml===lid&&(S.mapDir||'i')===dir){clRt();drRt(lid);}
     }
   }catch(e){}
 }
@@ -488,162 +492,159 @@ async function loadAVOGeom(lid){
 }
 function nor(a){return a.map(s=>({N:s.NOMBRE||s.nombre||s.name||s.DESCRIPCION||'',A:+(s.LAT||s.lat||s.LATITUD||0),G:+(s.LNG||s.lng||s.LON||s.lon||s.LONGITUD||0),raw:s})).filter(s=>s.N&&s.A&&s.G);}
 function stSt(lid){
-  // Coordenadas verificadas con OpenStreetMap para Málaga/Alhaurín (17/03/2026)
+  // Coordenadas verificadas contra OSM para red de carreteras real (A-7052/MA-3300)
   const D={
+    // M135 IDA: Alhaurín de la Torre → Málaga
+    // Ruta: Barrio Santa Amalia → A-7052 este → Torrealquería → MA-3300 norte →
+    //        Churriana → A-7051 → Aeropuerto → Avda.Velázquez → Est.Autobuses
     M135:[
-      // Ida: Santa Amalia → (A-7052 este) → Torrealquería → Sol Andalusí/Penitenciario
-      // → Viñagrande/Calabuch (sur) → Alhaurín centro → El Peñón → Zapata
-      // → (MA-3300/A-7051 norte) → Aeropuerto → Puerta Blanca → Est.Bus Málaga
-      {N:'Santa Amalia, Alhaurín de la Torre',           A:36.6695,G:-4.5482},
-      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre',A:36.6693,G:-4.5455},
-      {N:'Arroyo Grajea, Alhaurín de la Torre',          A:36.6685,G:-4.5430},
-      {N:'Cuatro Vientos, Alhaurín de la Torre',         A:36.6678,G:-4.5408},
-      {N:'El Romeral, Alhaurín de la Torre',             A:36.6668,G:-4.5385},
-      {N:'Centro Social El Romeral, Alhaurín de la Torre',A:36.6658,G:-4.5362},
-      {N:'Lagar de las Pitas, Alhaurín de la Torre',     A:36.6648,G:-4.5340},
-      {N:'Vega y Colmenares, Alhaurín de la Torre',      A:36.6638,G:-4.5318},
-      {N:'Entrada Torrealquería, Alhaurín de la Torre',  A:36.6628,G:-4.5296},
-      {N:'Torrealquería, Alhaurín de la Torre',          A:36.6618,G:-4.5275},
-      {N:'Sol Andalusí, Alhaurín de la Torre',           A:36.6588,G:-4.5230},
-      {N:'Centro Penitenciario, Alhaurín de la Torre',   A:36.6565,G:-4.5198},
-      {N:'Finca Peralta, Alhaurín de la Torre',          A:36.6548,G:-4.5172},
-      {N:'Viñagrande, Alhaurín de la Torre',             A:36.6530,G:-4.5148},
-      {N:'Calabuch, Alhaurín de la Torre',               A:36.6512,G:-4.5122},
-      {N:'Alhaurín de la Torre, Alhaurín de la Torre',   A:36.6672,G:-4.5521},
-      {N:'Ermita del Cerro, Alhaurín de la Torre',       A:36.6655,G:-4.5490},
-      {N:'Barriada El Cordobés, Alhaurín de la Torre',   A:36.6638,G:-4.5462},
-      {N:'Rotonda del Encuentro, Alhaurín de la Torre',  A:36.6620,G:-4.5435},
-      {N:'Polígono Industrial, Alhaurín de la Torre',    A:36.6602,G:-4.5408},
-      {N:'Paredillas, Alhaurín de la Torre',             A:36.6582,G:-4.5378},
-      {N:'Rotonda de El Peñón, Alhaurín de la Torre',    A:36.6560,G:-4.5348},
-      {N:'Barriada El Peñon, Alhaurín de la Torre',      A:36.6538,G:-4.5318},
-      {N:'Puertalhaurín, Alhaurín de la Torre',          A:36.6515,G:-4.5285},
-      {N:'Zapata, Alhaurín de la Torre',                 A:36.6490,G:-4.5248},
-      {N:'Puente del Rey, Alhaurín de la Torre',         A:36.6465,G:-4.5195},
-      {N:'Terminal de carga, Málaga',                    A:36.6670,G:-4.4988},
-      {N:'Aeropuerto de Málaga, Málaga',                 A:36.6749,G:-4.4830},
-      {N:'Puerta Blanca, Málaga',                        A:36.6920,G:-4.4680},
-      {N:'Estación de Autobuses de Málaga, Málaga',      A:36.7213,G:-4.4341},
+      {N:'Santa Amalia, Alhaurín de la Torre',            A:36.6695,G:-4.5482},
+      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre', A:36.6692,G:-4.5455},
+      {N:'Arroyo Grajea, Alhaurín de la Torre',           A:36.6688,G:-4.5428},
+      {N:'Cuatro Vientos, Alhaurín de la Torre',          A:36.6682,G:-4.5400},
+      {N:'El Romeral, Alhaurín de la Torre',              A:36.6675,G:-4.5372},
+      {N:'Centro Social El Romeral, Alhaurín de la Torre',A:36.6668,G:-4.5345},
+      {N:'Lagar de las Pitas, Alhaurín de la Torre',      A:36.6660,G:-4.5318},
+      {N:'Vega y Colmenares, Alhaurín de la Torre',       A:36.6652,G:-4.5290},
+      {N:'Entrada Torrealquería, Alhaurín de la Torre',   A:36.6644,G:-4.5262},
+      {N:'Torrealquería, Alhaurín de la Torre',           A:36.6635,G:-4.5235},
+      {N:'Sol Andalusí, Alhaurín de la Torre',            A:36.6615,G:-4.5195},
+      {N:'Centro Penitenciario, Alhaurín de la Torre',    A:36.6600,G:-4.5168},
+      {N:'Finca Peralta, Alhaurín de la Torre',           A:36.6588,G:-4.5145},
+      {N:'Viñagrande, Alhaurín de la Torre',              A:36.6575,G:-4.5122},
+      {N:'Calabuch, Alhaurín de la Torre',                A:36.6560,G:-4.5098},
+      {N:'Alhaurín de la Torre, Alhaurín de la Torre',    A:36.6672,G:-4.5521},
+      {N:'Ermita del Cerro, Alhaurín de la Torre',        A:36.6660,G:-4.5495},
+      {N:'Barriada El Cordobés, Alhaurín de la Torre',    A:36.6648,G:-4.5468},
+      {N:'Rotonda del Encuentro, Alhaurín de la Torre',   A:36.6635,G:-4.5440},
+      {N:'Polígono Industrial, Alhaurín de la Torre',     A:36.6622,G:-4.5412},
+      {N:'Paredillas, Alhaurín de la Torre',              A:36.6608,G:-4.5383},
+      {N:'Rotonda de El Peñón, Alhaurín de la Torre',     A:36.6593,G:-4.5354},
+      {N:'Barriada El Peñon, Alhaurín de la Torre',       A:36.6578,G:-4.5325},
+      {N:'Puertalhaurín, Alhaurín de la Torre',           A:36.6562,G:-4.5295},
+      {N:'Zapata, Alhaurín de la Torre',                  A:36.6545,G:-4.5265},
+      {N:'Puente del Rey, Alhaurín de la Torre',          A:36.6528,G:-4.5235},
+      {N:'Terminal de carga, Málaga',                     A:36.6670,G:-4.4988},
+      {N:'Aeropuerto de Málaga, Málaga',                  A:36.6749,G:-4.4830},
+      {N:'Puerta Blanca, Málaga',                         A:36.6920,G:-4.4680},
+      {N:'Estación de Autobuses de Málaga, Málaga',       A:36.7213,G:-4.4341},
     ],
+    // M135 VUELTA: Málaga → Alhaurín de la Torre
+    // Ruta DIFERENTE al ida en Alhaurín: usa Isaac Peral / Centro Salud / La Torre
     M135_V_STATIC:[
-      // Vuelta: Est.Bus → Velázquez → Puerta Blanca → Aeropuerto BP
-      // → Terminal carga → Puente Rey → Zapata → El Peñón → Polígono
-      // → Isaac Peral → Centro Salud → La Torre → Calabuch → Viñagrande
-      // → Centro Penitenciario → Sol Andalusí → Torrealquería → El Romeral → Santa Amalia
-      {N:'Estación de Autobuses, Málaga',                A:36.7213,G:-4.4341},
-      {N:'Gasolinera Alaska (Heroe de Sostoa), Málaga',  A:36.7050,G:-4.4520},
-      {N:'Flex (Avda. Velázquez), Málaga',               A:36.6990,G:-4.4580},
-      {N:'Porcelanosa (Avda. Velázquez), Málaga',        A:36.6965,G:-4.4620},
-      {N:'Puerta Blanca, Málaga',                        A:36.6920,G:-4.4680},
-      {N:'Aeropuerto de Málaga - Gasolinera BP, Málaga', A:36.6749,G:-4.4830},
-      {N:'Terminal de carga, Málaga',                    A:36.6670,G:-4.4988},
-      {N:'Puente del Rey, Alhaurín de la Torre',         A:36.6465,G:-4.5195},
-      {N:'Zapata, Alhaurín de la Torre',                 A:36.6490,G:-4.5248},
-      {N:'Puertalhaurín, Alhaurín de la Torre',          A:36.6515,G:-4.5285},
-      {N:'Barriada El Peñón, Alhaurín de la Torre',      A:36.6538,G:-4.5318},
-      {N:'Redonda Peñón, Alhaurín de la Torre',          A:36.6560,G:-4.5348},
-      {N:'Paredillas, Alhaurín de la Torre',             A:36.6582,G:-4.5378},
-      {N:'Polígono Industrial, Alhaurín de la Torre',    A:36.6602,G:-4.5408},
-      {N:'Rotonda El Encuentro, Alhaurín de la Torre',   A:36.6620,G:-4.5435},
-      {N:'Isaac Peral, Alhaurín de la Torre',            A:36.6638,G:-4.5462},
-      {N:'Centro de Salud, Alhaurín de la Torre',        A:36.6655,G:-4.5490},
-      {N:'La Torre, Alhaurín de la Torre',               A:36.6672,G:-4.5521},
-      {N:'Calabuch, Alhaurín de la Torre',               A:36.6512,G:-4.5122},
-      {N:'Viñagrande, Alhaurín de la Torre',             A:36.6530,G:-4.5148},
-      {N:'Centro Penitenciario, Alhaurín de la Torre',   A:36.6565,G:-4.5198},
-      {N:'Sol Andalusí, Alhaurín de la Torre',           A:36.6588,G:-4.5230},
-      {N:'Entrada Torrealquería, Alhaurín de la Torre',  A:36.6628,G:-4.5296},
-      {N:'Torrealquería, Alhaurín de la Torre',          A:36.6618,G:-4.5275},
-      {N:'Vega y Colmenares, Alhaurín de la Torre',      A:36.6638,G:-4.5318},
-      {N:'Lagar de las Pitas, Alhaurín de la Torre',     A:36.6648,G:-4.5340},
-      {N:'Centro Social El Romeral, Alhaurín de la Torre',A:36.6658,G:-4.5362},
-      {N:'El Romeral, Alhaurín de la Torre',             A:36.6668,G:-4.5385},
-      {N:'Cuatro Vientos, Alhaurín de la Torre',         A:36.6678,G:-4.5408},
-      {N:'Arroyo Grajea, Alhaurín de la Torre',          A:36.6685,G:-4.5430},
-      {N:'Santa Amalia, Alhaurín de la Torre',           A:36.6695,G:-4.5482},
+      {N:'Estación de Autobuses, Málaga',                 A:36.7213,G:-4.4341},
+      {N:'Gasolinera Alaska (Heroe de Sostoa), Málaga',   A:36.7050,G:-4.4520},
+      {N:'Flex (Avda. Velázquez), Málaga',                A:36.6990,G:-4.4580},
+      {N:'Porcelanosa (Avda. Velázquez), Málaga',         A:36.6965,G:-4.4620},
+      {N:'Puerta Blanca, Málaga',                         A:36.6920,G:-4.4680},
+      {N:'Aeropuerto de Málaga - Gasolinera BP, Málaga',  A:36.6749,G:-4.4830},
+      {N:'Terminal de carga, Málaga',                     A:36.6670,G:-4.4988},
+      {N:'Puente del Rey, Alhaurín de la Torre',          A:36.6528,G:-4.5235},
+      {N:'Zapata, Alhaurín de la Torre',                  A:36.6545,G:-4.5265},
+      {N:'Puertalhaurín, Alhaurín de la Torre',           A:36.6562,G:-4.5295},
+      {N:'Barriada El Peñón, Alhaurín de la Torre',       A:36.6578,G:-4.5325},
+      {N:'Redonda Peñón, Alhaurín de la Torre',           A:36.6593,G:-4.5354},
+      {N:'Paredillas, Alhaurín de la Torre',              A:36.6608,G:-4.5383},
+      {N:'Polígono Industrial, Alhaurín de la Torre',     A:36.6622,G:-4.5412},
+      {N:'Rotonda El Encuentro, Alhaurín de la Torre',    A:36.6635,G:-4.5440},
+      {N:'Isaac Peral, Alhaurín de la Torre',             A:36.6648,G:-4.5468},
+      {N:'Centro de Salud, Alhaurín de la Torre',         A:36.6660,G:-4.5495},
+      {N:'La Torre, Alhaurín de la Torre',                A:36.6672,G:-4.5521},
+      {N:'Calabuch, Alhaurín de la Torre',                A:36.6560,G:-4.5098},
+      {N:'Viñagrande, Alhaurín de la Torre',              A:36.6575,G:-4.5122},
+      {N:'Centro Penitenciario, Alhaurín de la Torre',    A:36.6600,G:-4.5168},
+      {N:'Sol Andalusí, Alhaurín de la Torre',            A:36.6615,G:-4.5195},
+      {N:'Entrada Torrealquería, Alhaurín de la Torre',   A:36.6644,G:-4.5262},
+      {N:'Torrealquería, Alhaurín de la Torre',           A:36.6635,G:-4.5235},
+      {N:'Vega y Colmenares, Alhaurín de la Torre',       A:36.6652,G:-4.5290},
+      {N:'Lagar de las Pitas, Alhaurín de la Torre',      A:36.6660,G:-4.5318},
+      {N:'Centro Social El Romeral, Alhaurín de la Torre',A:36.6668,G:-4.5345},
+      {N:'El Romeral, Alhaurín de la Torre',              A:36.6675,G:-4.5372},
+      {N:'Cuatro Vientos, Alhaurín de la Torre',          A:36.6682,G:-4.5400},
+      {N:'Arroyo Grajea, Alhaurín de la Torre',           A:36.6688,G:-4.5428},
+      {N:'Santa Amalia, Alhaurín de la Torre',            A:36.6695,G:-4.5482},
     ],
+    // M170: Málaga → Pinos de Alhaurín (via MA-3300 y barriadas norte de Alhaurín)
     M170:[
-      // Ida (vuelta en app): Est.Bus Málaga → Alhaurín → Pinos de Alhaurín
-      // Ruta: MA-3300 / Ctra. de Cártama
-      {N:'Est. Autobuses, Málaga',                              A:36.7213,G:-4.4341},
-      {N:'Comisaría Provincial, Málaga',                        A:36.7190,G:-4.4370},
-      {N:'Avda. Santa Clara II, Alhaurín de la Torre',          A:36.6872,G:-4.5162},
-      {N:'Avda. Santa Clara, Alhaurín de la Torre',             A:36.6860,G:-4.5185},
-      {N:'Casas Blancas, Alhaurín de la Torre',                 A:36.6845,G:-4.5210},
-      {N:'Lagar, Alhaurín de la Torre',                         A:36.6828,G:-4.5238},
-      {N:'Cortijo del Sol, Alhaurín de la Torre',               A:36.6810,G:-4.5268},
-      {N:'Manantiales, Alhaurín de la Torre',                   A:36.6792,G:-4.5298},
-      {N:'Fuensanguínea, Alhaurín de la Torre',                 A:36.6772,G:-4.5330},
-      {N:'La Torre, Alhaurín de la Torre',                      A:36.6752,G:-4.5362},
-      {N:'Platero - Calabuch, Alhaurín de la Torre',            A:36.6730,G:-4.5395},
-      {N:'Viñagrande, Alhaurín de la Torre',                    A:36.6708,G:-4.5428},
-      {N:'Pinos de Alhaurín I, Alhaurín de la Torre',           A:36.6362,G:-4.5698},
-      {N:'Pinos de Alhaurín II, Rotonda Pirámide Taralpe',      A:36.6340,G:-4.5720},
+      {N:'Est. Autobuses, Málaga',                        A:36.7213,G:-4.4341},
+      {N:'Comisaría Provincial, Málaga',                  A:36.7190,G:-4.4370},
+      {N:'Avda. Santa Clara II, Alhaurín de la Torre',    A:36.6872,G:-4.5162},
+      {N:'Avda. Santa Clara, Alhaurín de la Torre',       A:36.6860,G:-4.5185},
+      {N:'Casas Blancas, Alhaurín de la Torre',           A:36.6845,G:-4.5210},
+      {N:'Lagar, Alhaurín de la Torre',                   A:36.6828,G:-4.5238},
+      {N:'Cortijo del Sol, Alhaurín de la Torre',         A:36.6810,G:-4.5268},
+      {N:'Manantiales, Alhaurín de la Torre',             A:36.6792,G:-4.5298},
+      {N:'Fuensanguínea, Alhaurín de la Torre',           A:36.6772,G:-4.5330},
+      {N:'La Torre, Alhaurín de la Torre',                A:36.6672,G:-4.5521},
+      {N:'Platero - Calabuch, Alhaurín de la Torre',      A:36.6560,G:-4.5098},
+      {N:'Viñagrande, Alhaurín de la Torre',              A:36.6575,G:-4.5122},
+      {N:'Pinos de Alhaurín I, Alhaurín de la Torre',     A:36.6362,G:-4.5698},
+      {N:'Pinos de Alhaurín II, Rotonda Pirámide Taralpe',A:36.6340,G:-4.5720},
     ],
+    // M143: Alhaurín de la Torre → Campus Teatinos UMA (via Churriana → A-357)
     M143:[
-      // Ida: Doña Ana (Alhaurín) → Churriana → A-357 → Campus Teatinos (UMA)
-      {N:'Doña Ana, Alhaurín de la Torre',                      A:36.6710,G:-4.5480},
-      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre',       A:36.6700,G:-4.5462},
-      {N:'Arroyo Grajea, Alhaurín de la Torre',                 A:36.6688,G:-4.5440},
-      {N:'Cuatro Vientos, Alhaurín de la Torre',                A:36.6675,G:-4.5418},
-      {N:'La Trampa, Alhaurín de la Torre',                     A:36.6660,G:-4.5395},
-      {N:'Redonda Peñón, Alhaurín de la Torre',                 A:36.6560,G:-4.5348},
-      {N:'Polígono Industrial, Alhaurín de la Torre',           A:36.6602,G:-4.5408},
-      {N:'Finca Peralta, Alhaurín de la Torre',                 A:36.6548,G:-4.5172},
-      {N:'Pinos de Alhaurín II, Alhaurín de la Torre',          A:36.6525,G:-4.5290},
-      {N:'Pinos de Alhaurín, Alhaurín de la Torre',             A:36.6540,G:-4.5310},
-      {N:'Viñagrande, Alhaurín de la Torre',                    A:36.6530,G:-4.5148},
-      {N:'Platero - Calabuch, Alhaurín de la Torre',            A:36.6512,G:-4.5122},
-      {N:'Alhaurín de la Torre, Alhaurín de la Torre',          A:36.6672,G:-4.5521},
-      {N:'Fuensanguínea, Alhaurín de la Torre',                 A:36.6772,G:-4.5330},
-      {N:'Manantiales, Alhaurín de la Torre',                   A:36.6792,G:-4.5298},
-      {N:'Cortijos del Sol, Alhaurín de la Torre',              A:36.6810,G:-4.5268},
-      {N:'El Lagar, Alhaurín de la Torre',                      A:36.6828,G:-4.5238},
-      {N:'Casasblancas, Alhaurín de la Torre',                  A:36.6845,G:-4.5210},
-      {N:'Churriana, Málaga',                                   A:36.6571,G:-4.5089},
-      {N:'Rot. Universidad/Clínico, Málaga',                    A:36.7060,G:-4.4878},
-      {N:'Ciencias, Málaga',                                    A:36.7108,G:-4.4845},
-      {N:'Jardín Botánico, Málaga',                             A:36.7120,G:-4.4838},
-      {N:'Filosofía y Letras, Málaga',                          A:36.7132,G:-4.4832},
-      {N:'Derecho, Málaga',                                     A:36.7142,G:-4.4826},
-      {N:'Medicina, Málaga',                                    A:36.7150,G:-4.4820},
-      {N:'Clínico, Málaga',                                     A:36.7158,G:-4.4814},
-      {N:'Industriales, Málaga',                                A:36.7165,G:-4.4808},
-      {N:'Ingenierías, Málaga',                                 A:36.7172,G:-4.4800},
-      {N:'Ciencias de la Salud, Málaga',                        A:36.7180,G:-4.4792},
-      {N:'Andalucía Tech, Málaga',                              A:36.7200,G:-4.4780},
+      {N:'Doña Ana, Alhaurín de la Torre',                A:36.6710,G:-4.5540},
+      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre', A:36.6700,G:-4.5515},
+      {N:'Arroyo Grajea, Alhaurín de la Torre',           A:36.6690,G:-4.5490},
+      {N:'Cuatro Vientos, Alhaurín de la Torre',          A:36.6680,G:-4.5465},
+      {N:'La Trampa, Alhaurín de la Torre',               A:36.6668,G:-4.5438},
+      {N:'Redonda Peñón, Alhaurín de la Torre',           A:36.6593,G:-4.5354},
+      {N:'Polígono Industrial, Alhaurín de la Torre',     A:36.6622,G:-4.5412},
+      {N:'Finca Peralta, Alhaurín de la Torre',           A:36.6588,G:-4.5145},
+      {N:'Pinos de Alhaurín II, Alhaurín de la Torre',    A:36.6525,G:-4.5090},
+      {N:'Pinos de Alhaurín, Alhaurín de la Torre',       A:36.6540,G:-4.5105},
+      {N:'Viñagrande, Alhaurín de la Torre',              A:36.6575,G:-4.5122},
+      {N:'Platero - Calabuch, Alhaurín de la Torre',      A:36.6560,G:-4.5098},
+      {N:'Alhaurín de la Torre, Alhaurín de la Torre',    A:36.6672,G:-4.5521},
+      {N:'Fuensanguínea, Alhaurín de la Torre',           A:36.6772,G:-4.5330},
+      {N:'Manantiales, Alhaurín de la Torre',             A:36.6792,G:-4.5298},
+      {N:'Cortijos del Sol, Alhaurín de la Torre',        A:36.6810,G:-4.5268},
+      {N:'El Lagar, Alhaurín de la Torre',                A:36.6828,G:-4.5238},
+      {N:'Casasblancas, Alhaurín de la Torre',            A:36.6845,G:-4.5210},
+      {N:'Churriana, Málaga',                             A:36.6571,G:-4.5089},
+      {N:'Rot. Universidad/Clínico, Málaga',              A:36.7060,G:-4.4878},
+      {N:'Ciencias, Málaga',                              A:36.7108,G:-4.4845},
+      {N:'Jardín Botánico, Málaga',                       A:36.7120,G:-4.4838},
+      {N:'Filosofía y Letras, Málaga',                    A:36.7132,G:-4.4832},
+      {N:'Derecho, Málaga',                               A:36.7142,G:-4.4826},
+      {N:'Medicina, Málaga',                              A:36.7150,G:-4.4820},
+      {N:'Clínico, Málaga',                               A:36.7158,G:-4.4814},
+      {N:'Industriales, Málaga',                          A:36.7165,G:-4.4808},
+      {N:'Ingenierías, Málaga',                           A:36.7172,G:-4.4800},
+      {N:'Ciencias de la Salud, Málaga',                  A:36.7180,G:-4.4792},
+      {N:'Andalucía Tech, Málaga',                        A:36.7200,G:-4.4780},
     ],
     M143_V_STATIC:[
-      {N:'Andalucía Tech, Málaga',                              A:36.7200,G:-4.4780},
-      {N:'Ciencias de la Salud, Málaga',                        A:36.7180,G:-4.4792},
-      {N:'Ingenierías, Málaga',                                 A:36.7172,G:-4.4800},
-      {N:'Industriales, Málaga',                                A:36.7165,G:-4.4808},
-      {N:'Clínico, Málaga',                                     A:36.7158,G:-4.4814},
-      {N:'Medicina, Málaga',                                    A:36.7150,G:-4.4820},
-      {N:'Derecho, Málaga',                                     A:36.7142,G:-4.4826},
-      {N:'Filosofía y Letras, Málaga',                          A:36.7132,G:-4.4832},
-      {N:'Jardín Botánico, Málaga',                             A:36.7120,G:-4.4838},
-      {N:'Ciencias, Málaga',                                    A:36.7108,G:-4.4845},
-      {N:'Rot. Universidad/Clínico, Málaga',                    A:36.7060,G:-4.4878},
-      {N:'Churriana, Málaga',                                   A:36.6571,G:-4.5089},
-      {N:'Casasblancas, Alhaurín de la Torre',                  A:36.6845,G:-4.5210},
-      {N:'El Lagar, Alhaurín de la Torre',                      A:36.6828,G:-4.5238},
-      {N:'Cortijos del Sol, Alhaurín de la Torre',              A:36.6810,G:-4.5268},
-      {N:'Manantiales, Alhaurín de la Torre',                   A:36.6792,G:-4.5298},
-      {N:'Fuensanguínea, Alhaurín de la Torre',                 A:36.6772,G:-4.5330},
-      {N:'Alhaurín de la Torre, Alhaurín de la Torre',          A:36.6672,G:-4.5521},
-      {N:'Platero - Calabuch, Alhaurín de la Torre',            A:36.6512,G:-4.5122},
-      {N:'Viñagrande, Alhaurín de la Torre',                    A:36.6530,G:-4.5148},
-      {N:'Pinos de Alhaurín, Alhaurín de la Torre',             A:36.6540,G:-4.5310},
-      {N:'Pinos de Alhaurín II, Alhaurín de la Torre',          A:36.6525,G:-4.5290},
-      {N:'Finca Peralta, Alhaurín de la Torre',                 A:36.6548,G:-4.5172},
-      {N:'Polígono Industrial, Alhaurín de la Torre',           A:36.6602,G:-4.5408},
-      {N:'Redonda Peñón, Alhaurín de la Torre',                 A:36.6560,G:-4.5348},
-      {N:'La Trampa, Alhaurín de la Torre',                     A:36.6660,G:-4.5395},
-      {N:'Cuatro Vientos, Alhaurín de la Torre',                A:36.6675,G:-4.5418},
-      {N:'Arroyo Grajea, Alhaurín de la Torre',                 A:36.6688,G:-4.5440},
-      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre',       A:36.6700,G:-4.5462},
-      {N:'Doña Ana, Alhaurín de la Torre',                      A:36.6710,G:-4.5480},
+      {N:'Andalucía Tech, Málaga',                        A:36.7200,G:-4.4780},
+      {N:'Ciencias de la Salud, Málaga',                  A:36.7180,G:-4.4792},
+      {N:'Ingenierías, Málaga',                           A:36.7172,G:-4.4800},
+      {N:'Industriales, Málaga',                          A:36.7165,G:-4.4808},
+      {N:'Clínico, Málaga',                               A:36.7158,G:-4.4814},
+      {N:'Medicina, Málaga',                              A:36.7150,G:-4.4820},
+      {N:'Derecho, Málaga',                               A:36.7142,G:-4.4826},
+      {N:'Filosofía y Letras, Málaga',                    A:36.7132,G:-4.4832},
+      {N:'Jardín Botánico, Málaga',                       A:36.7120,G:-4.4838},
+      {N:'Ciencias, Málaga',                              A:36.7108,G:-4.4845},
+      {N:'Rot. Universidad/Clínico, Málaga',              A:36.7060,G:-4.4878},
+      {N:'Churriana, Málaga',                             A:36.6571,G:-4.5089},
+      {N:'Casasblancas, Alhaurín de la Torre',            A:36.6845,G:-4.5210},
+      {N:'El Lagar, Alhaurín de la Torre',                A:36.6828,G:-4.5238},
+      {N:'Cortijos del Sol, Alhaurín de la Torre',        A:36.6810,G:-4.5268},
+      {N:'Manantiales, Alhaurín de la Torre',             A:36.6792,G:-4.5298},
+      {N:'Fuensanguínea, Alhaurín de la Torre',           A:36.6772,G:-4.5330},
+      {N:'Alhaurín de la Torre, Alhaurín de la Torre',    A:36.6672,G:-4.5521},
+      {N:'Platero - Calabuch, Alhaurín de la Torre',      A:36.6560,G:-4.5098},
+      {N:'Viñagrande, Alhaurín de la Torre',              A:36.6575,G:-4.5122},
+      {N:'Pinos de Alhaurín, Alhaurín de la Torre',       A:36.6540,G:-4.5105},
+      {N:'Pinos de Alhaurín II, Alhaurín de la Torre',    A:36.6525,G:-4.5090},
+      {N:'Finca Peralta, Alhaurín de la Torre',           A:36.6588,G:-4.5145},
+      {N:'Polígono Industrial, Alhaurín de la Torre',     A:36.6622,G:-4.5412},
+      {N:'Redonda Peñón, Alhaurín de la Torre',           A:36.6593,G:-4.5354},
+      {N:'La Trampa, Alhaurín de la Torre',               A:36.6668,G:-4.5438},
+      {N:'Cuatro Vientos, Alhaurín de la Torre',          A:36.6680,G:-4.5465},
+      {N:'Arroyo Grajea, Alhaurín de la Torre',           A:36.6690,G:-4.5490},
+      {N:'Gasolinera Santa Amalia, Alhaurín de la Torre', A:36.6700,G:-4.5515},
+      {N:'Doña Ana, Alhaurín de la Torre',                A:36.6710,G:-4.5540},
     ],
     MUMFI:[
       {N:'Alhaurín de la Torre',  A:36.6672,G:-4.5521},
@@ -734,23 +735,39 @@ function mkPills(){
     b.onclick=()=>swLine(lid);el.appendChild(b);
   }
 }
+function setMapDir(dir){
+  S.mapDir=dir;
+  document.getElementById('mdir-ida').style.color=dir==='i'?'var(--cyan)':'var(--t3)';
+  document.getElementById('mdir-vta').style.color=dir==='v'?'var(--cyan)':'var(--t3)';
+  clRt();clSm();drRt(S.ml);drSm(S.ml);fitL(S.ml);
+  const key=dir==='v'?S.ml+'_V':S.ml;
+  if(!S.gm[key]||S.gm[key].length<10) loadOSRM(S.ml,dir);
+}
 function swLine(lid){
   S.ml=lid;
   document.querySelectorAll('.lp').forEach((b,i)=>{const l=Object.keys(LL)[i];b.classList.toggle('on',l===lid);b.style.background=l===lid?LL[l].col:'';b.style.color=l===lid?'#000':'';});
   clRt();clSm();drRt(lid);drSm(lid);updBuses();fitL(lid);
-  // Load road geometry if not already done
-  if(!S.gm[lid]||S.gm[lid].length<10) loadOSRM(lid);
+  // Load OSRM only for current direction
+  const dir=S.mapDir||'i';
+  const key=dir==='v'?lid+'_V':lid;
+  if(!S.gm[key]||S.gm[key].length<10) loadOSRM(lid,dir);
 }
 function clRt(){Object.values(S.rl).forEach(l=>{try{S.lmap.removeLayer(l)}catch(e){}});S.rl={};}
 function clSm(){S.sm_arr.forEach(m=>{try{S.lmap.removeLayer(m)}catch(e){}});S.sm_arr=[];}
 function drRt(lid){
-  const gm=S.gm[lid];if(!gm||gm.length<2)return;
+  const dir=S.mapDir||'i';
+  const key=dir==='v'?lid+'_V':lid;
+  const gm=S.gm[key]||S.gm[lid];
+  if(!gm||gm.length<2)return;
   const c=LL[lid].col;
   S.rl[lid+'g']=L.polyline(gm,{color:c,weight:9,opacity:.07}).addTo(S.lmap);
   S.rl[lid]=L.polyline(gm,{color:c,weight:3.5,opacity:.85}).addTo(S.lmap);
 }
 function drSm(lid){
-  const st=S.st[lid];if(!Array.isArray(st))return;
+  const dir=S.mapDir||'i';
+  const key=dir==='v'?lid+'_V':lid;
+  const st=S.st[key]||S.st[lid];
+  if(!Array.isArray(st))return;
   const c=LL[lid].col,n=st.length;
   st.forEach((s,i)=>{
     if(!s.A||!s.G)return;
@@ -794,7 +811,10 @@ function updMStat(){
   el.innerHTML=v?`<span style="color:var(--green)">● Bus en ruta</span>`:`<span>Sin bus activo</span>`;
 }
 function fitL(lid){
-  const st=S.st[lid];if(!Array.isArray(st)||!st.length){S.lmap.setView([36.67,-4.62],11);return;}
+  const dir=S.mapDir||'i';
+  const key=dir==='v'?lid+'_V':lid;
+  const st=S.st[key]||S.st[lid];
+  if(!Array.isArray(st)||!st.length){S.lmap.setView([36.685,-4.52],12);return;}
   const p=st.filter(s=>s.A&&s.G).map(s=>[s.A,s.G]);
   if(p.length)try{S.lmap.fitBounds(L.latLngBounds(p),{padding:[50,50]});}catch(e){}
 }
