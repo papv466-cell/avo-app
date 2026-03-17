@@ -393,14 +393,26 @@ const S={
 
 async function boot(){
   pwaD();
-  gpsW();
-  wsC();
+  // STEP 1: Load static data immediately - no network needed
+  for(const lid of Object.keys(LL)){
+    S.st[lid]=stSt(lid);
+    S.st[lid+'_V']=lid==='M135'?stSt('M135_V'):lid==='M143'?stSt('M143_V'):[...S.st[lid]].reverse();
+    S.gm[lid]=S.st[lid].filter(s=>s.A&&s.G).map(s=>[s.A,s.G]);
+  }
+  // STEP 2: Render UI immediately with static data
   mkCards();
   mkTabs();
-  await Promise.all(Object.keys(LL).map(l=>loadL(l)));
   updETA();
   rStops();
   rSched();
+  // STEP 3: Try network in background (improves data if backend is up)
+  gpsW();
+  wsC();
+  Promise.all(Object.keys(LL).map(l=>loadL(l))).then(()=>{
+    updETA();
+    if(S.pg==='ps')rStops();
+    if(S.pg==='pm'&&S.mi){clRt();clSm();drRt(S.ml);drSm(S.ml);updBuses();}
+  }).catch(()=>{});
   setInterval(pollV,12000);
   setInterval(updETA,6000);
 }
@@ -416,7 +428,7 @@ async function loadL(lid){
       fetch(`${BE}/vehicles/${lid}_V`,{signal:to}),
       fetch(`${BE}/lines/${lid}`,{signal:to}),
     ]);
-    if(sr.status==='fulfilled'&&sr.value.ok){const d=await sr.value.json();const a=d.stops||d||[];if(a.length){S.st[lid]=nor(a);S.st[lid+'_V']=[...S.st[lid]].reverse();}}
+    if(sr.status==='fulfilled'&&sr.value.ok){const d=await sr.value.json();const a=d.stops||d||[];if(a.length){const nn=nor(a);if(nn.length>=(S.st[lid]||[]).length){S.st[lid]=nn;S.st[lid+'_V']=(lid==='M135'?stSt('M135_V'):lid==='M143'?stSt('M143_V'):[...nn].reverse());}}}
     if(vr.status==='fulfilled'&&vr.value.ok){const d=await vr.value.json();if(d?.lat)S.v[lid]={...d,ts:Date.now()};}
     if(vvr.status==='fulfilled'&&vvr.value.ok){const d=await vvr.value.json();if(d?.lat)S.v[lid+'_V']={...d,ts:Date.now()};}
     if(rr.status==='fulfilled'&&rr.value.ok){const d=await rr.value.json();const p=d.geometry||d.route||d.points||[];if(p.length)S.gm[lid]=p;}
@@ -433,7 +445,7 @@ async function loadAVOStops(lid){
     const r=await fetch(`${API}?ACTION=RUTA_PARADAS_GET&COMPANY=${CO}&COD_ENRUTA=${LL[lid].cod}`,{signal:to});
     if(r.ok){const d=await r.json();const a=d.paradas||d.stops||d||[];if(Array.isArray(a)&&a.length){S.st[lid]=nor(a);S.st[lid+'_V']=[...S.st[lid]].reverse();loadAVOGeom(lid);return;}}
   }catch(e){}
-  S.st[lid]=stSt(lid);S.st[lid+'_V']=[...S.st[lid]].reverse();
+  if(!S.st[lid]||!S.st[lid].length){S.st[lid]=stSt(lid);S.st[lid+'_V']=(lid==='M135'?stSt('M135_V'):lid==='M143'?stSt('M143_V'):[...S.st[lid]].reverse());}
 }
 async function loadAVOGeom(lid){
   const to=AbortSignal.timeout?AbortSignal.timeout(7000):undefined;
