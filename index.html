@@ -492,7 +492,7 @@ async function loadAVOGeom(lid){
 }
 function nor(a){return a.map(s=>({N:s.NOMBRE||s.nombre||s.name||s.DESCRIPCION||'',A:+(s.LAT||s.lat||s.LATITUD||0),G:+(s.LNG||s.lng||s.LON||s.lon||s.LONGITUD||0),raw:s})).filter(s=>s.N&&s.A&&s.G);}
 function stSt(lid){
-  // COORDENADAS EXACTAS del CSV oficial de AVO (paradas_m135_csv_.csv)
+  // COORDS EXACTAS CSV AVO + verificadas contra imágenes reales ruta 17/03/2026
   const D={
     M135:[
       {N:'Santa Amalia, Alhaurín de la Torre',              A:36.705631,G:-4.567568},
@@ -525,23 +525,21 @@ function stSt(lid){
       {N:'Estación de Autobuses de Málaga, Málaga',         A:36.713332,G:-4.433934},
     ],
     M135_V_STATIC:[
-      // Vuelta: Est.Bus → Velázquez → Aeropuerto → MA-3300 → Alhaurín
-      // (mismas coordenadas del CSV en orden inverso + paradas extra vuelta)
       {N:'Estación de Autobuses, Málaga',                   A:36.713332,G:-4.433934},
-      {N:'Gasolinera Alaska (Heroe de Sostoa), Málaga',     A:36.707000,G:-4.443000},
+      {N:'Gasolinera Alaska (Heroe de Sostoa), Málaga',     A:36.706500,G:-4.441500},
       {N:'Flex (Avda. Velázquez), Málaga',                  A:36.695992,G:-4.450428},
       {N:'Porcelanosa (Avda. Velázquez), Málaga',           A:36.694070,G:-4.452860},
-      {N:'Puerta Blanca, Málaga',                           A:36.689000,G:-4.458000},
+      {N:'Puerta Blanca, Málaga',                           A:36.682000,G:-4.462000},
       {N:'Aeropuerto de Málaga - Gasolinera BP, Málaga',    A:36.678494,G:-4.492532},
       {N:'Terminal de carga, Málaga',                       A:36.684187,G:-4.499570},
-      {N:'Puente del Rey, Alhaurín de la Torre',            A:36.687000,G:-4.517000},
+      {N:'Puente del Rey, Alhaurín de la Torre',            A:36.686500,G:-4.514000},
       {N:'Zapata, Alhaurín de la Torre',                    A:36.687706,G:-4.522872},
       {N:'Puertalhaurín, Alhaurín de la Torre',             A:36.685866,G:-4.529405},
       {N:'Barriada El Peñón, Alhaurín de la Torre',         A:36.683280,G:-4.534572},
       {N:'Redonda Peñón, Alhaurín de la Torre',             A:36.682808,G:-4.537368},
       {N:'Paredillas, Alhaurín de la Torre',                A:36.676982,G:-4.544822},
       {N:'Polígono Industrial, Alhaurín de la Torre',       A:36.673441,G:-4.550662},
-      {N:'Rotonda El Encuentro, Alhaurín de la Torre',      A:36.669000,G:-4.555000},
+      {N:'Rotonda El Encuentro, Alhaurín de la Torre',      A:36.670000,G:-4.554000},
       {N:'Isaac Peral, Alhaurín de la Torre',               A:36.667487,G:-4.559686},
       {N:'Centro de Salud, Alhaurín de la Torre',           A:36.664529,G:-4.556832},
       {N:'La Torre, Alhaurín de la Torre',                  A:36.660303,G:-4.563033},
@@ -551,7 +549,7 @@ function stSt(lid){
       {N:'Sol Andalusí, Alhaurín de la Torre',              A:36.675064,G:-4.595675},
       {N:'Entrada Torrealquería, Alhaurín de la Torre',     A:36.687727,G:-4.597795},
       {N:'Torrealquería, Alhaurín de la Torre',             A:36.689655,G:-4.598674},
-      {N:'Vega y Colmenares, Alhaurín de la Torre',         A:36.688000,G:-4.574000},
+      {N:'Vega y Colmenares, Alhaurín de la Torre',         A:36.688200,G:-4.580000},
       {N:'Lagar de las Pitas, Alhaurín de la Torre',        A:36.685327,G:-4.570865},
       {N:'Centro Social El Romeral, Alhaurín de la Torre',  A:36.686979,G:-4.569475},
       {N:'El Romeral, Alhaurín de la Torre',                A:36.691535,G:-4.567213},
