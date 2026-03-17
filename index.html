@@ -444,8 +444,8 @@ async function boot(){
     if(S.pg==='ps')rStops();
     if(S.pg==='pm'&&S.mi){clRt();clSm();drRt(S.ml);drSm(S.ml);updBuses();}
   }).catch(()=>{});
-  setInterval(pollV,15000);
-  setInterval(updETA,5000);
+  setInterval(pollV,20000); // 20s = fresh enough, not too aggressive
+  setInterval(updETA,10000);
   // First poll immediately after static data loads
   setTimeout(pollV, 800);
 }
@@ -834,11 +834,14 @@ function updETA(){
     if(!numEl)continue;
 
     const v=S.v[lid]||S.v[lid+'_V'];
+    // Adjust ETAs for elapsed time since last GPS update
+    const elapsed_s=v?.ts?Math.round((Date.now()-v.ts)/1000):0;
     const sched=SCH[lid]?.[dayKey];
 
     if(v?.nextStopEta!=null){
       // BUS ACTIVO con GPS real
-      const m=Math.round(v.nextStopEta/60);
+      const rawEta=Math.max(0,v.nextStopEta-elapsed_s);
+      const m=Math.round(rawEta/60);
       const col=m<3?'var(--green)':m<10?'var(--cyan)':'var(--amber)';
       numEl.textContent=m;
       numEl.style.color=col;
@@ -996,8 +999,13 @@ function updBP(){
   const ge=document.getElementById('bp-g');
   ge.innerHTML=ago<90?`<span class="gok">● GPS vivo</span>`:`⚠️ GPS ${ago}s`;
   const etas=v.etas||[];const se=document.getElementById('bp-s');
-  if(etas.length)se.innerHTML=etas.slice(0,6).map((e,i)=>`<div class="bsc ${i===0?'cur':''}"><div class="bscn">${e.stopName||'Parada'}</div><div class="bsce">${e.etaMin??'—'}</div><div class="bscu">min</div></div>`).join('');
-  else if(v.nextStopName)se.innerHTML=`<div class="bsc cur"><div class="bscn">${v.nextStopName}</div><div class="bsce">${v.nextStopEta!=null?Math.round(v.nextStopEta/60):'—'}</div><div class="bscu">min</div></div>`;
+  if(etas.length)se.innerHTML=etas.slice(0,6).map((e,i)=>{
+      const elp=v.ts?Math.round((Date.now()-v.ts)/1000):0;
+      const adj=e.etaMin!=null?Math.max(0,Math.round((e.etaMin*60-elp)/60)):null;
+      const col=adj===0?'var(--green)':adj<=2?'var(--green)':'var(--cyan)';
+      return`<div class="bsc ${i===0?'cur':''}"><div class="bscn">${e.stopName||'Parada'}</div><div class="bsce" style="color:${col}">${adj!=null?adj:'—'}</div><div class="bscu">min</div></div>`;
+    }).join('');
+  else if(v.nextStopName)se.innerHTML=`<div class="bsc cur"><div class="bscn">${v.nextStopName}</div><div class="bsce">${v.nextStopEta!=null?Math.max(0,Math.round((v.nextStopEta-(v.ts?(Date.now()-v.ts)/1000:0))/60)):'—'}</div><div class="bscu">min</div></div>`;
   else se.innerHTML=`<div style="font-size:11px;color:var(--t3);padding:8px">Bus activo — sin ETAs</div>`;
 }
 function updMStat(){
@@ -1040,19 +1048,23 @@ function drStart(lid){
   S.drt[lid]=setInterval(()=>{
     const dir=S.mapDir||'i';
     const key=dir==='i'?lid:lid+'_V';
-    const v=S.v[key];if(!v?.lat||!v?.ts)return;
-    if(S.pg!=='pm'||S.ml!==lid||!S.lmap||!S.mi)return;
-    const el=(Date.now()-v.ts)/1000;if(el<2||el>90)return;
-    const spd=Math.max(5,Math.min(+v.speed||20,80))*1000/3600;
-    const mv=spd*el;
+    const v=S.v[key];
+    if(!v?.lat||!v?.ts)return;
+    if(!S.lmap||!S.mi)return;
+    // Seconds elapsed since last real GPS fix
+    const elapsed=(Date.now()-v.ts)/1000;
+    if(elapsed<1||elapsed>300)return; // move up to 5min after last fix
+    const spd=Math.max(5,Math.min(+(v.speed)||15,80))*1000/3600; // m/s
+    const dist=spd*elapsed;
     const gmKey=dir==='i'?lid:lid+'_V';
     const gm=S.gm[gmKey]||S.gm[lid];
-    const marker=S.bm[key];
+    const marker=S.bm[key]||(S.pg==='pm'&&S.ml===lid?mkBM(v,lid,dir==='i'?'i':'v'):null);
+    if(marker&&!S.bm[key]){S.bm[key]=marker;}
     if(gm?.length>1&&marker){
-      const pos=rSnap(+v.lat,+(v.lng||v.lon),gm,mv);
+      const pos=rSnap(+(v.lat),+(v.lng||v.lon||0),gm,dist);
       if(pos)marker.setLatLng(pos);
     }
-  },2000);
+  },3000);
 }
 function rSnap(la,lo,gm,adv){
   let bi=0,bt=0,bd=Infinity;
