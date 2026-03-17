@@ -2715,57 +2715,8 @@ function checkIOSInstall() {
 function dismissIOSInstall() { const b=document.getElementById('ios-install-banner'); if(b) b.style.display='none'; localStorage.setItem('avo_ios_dismissed', Date.now()); }
 
 // ── SERVICE WORKER (offline mode) ─────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Inline SW as blob URL since we're single-file
-    const swCode = `
-const CACHE = 'avo-v1';
-const STATIC = [
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap',
-];
-
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(STATIC).catch(()=>{}))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
-  ));
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  // Network-first for API calls, cache-first for static assets
-  if (url.includes('avo-bus-backend') || url.includes('virtual-office365')) {
-    e.respondWith(
-      fetch(e.request)
-        .then(r => { const c=r.clone(); caches.open(CACHE).then(ch=>ch.put(e.request,c)); return r; })
-        .catch(() => caches.match(e.request))
-    );
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(r => r || fetch(e.request)
-        .then(r2 => { const c=r2.clone(); caches.open(CACHE).then(ch=>ch.put(e.request,c)); return r2; })
-        .catch(() => new Response('Offline', {status:503}))
-      )
-    );
-  }
-});
-`;
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl)
-      .then(()=>console.log('SW registered'))
-      .catch(e=>console.warn('SW failed:',e));
-  });
-}
+// Service Worker disabled (blob URLs not supported in all browsers)
+// Offline state handled via localStorage instead
 
 // ── OFFLINE STATE CACHE (localStorage) ──────────────────────────
 // Cache last known vehicle/eta state so it survives page reload offline
