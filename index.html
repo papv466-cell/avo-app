@@ -545,6 +545,42 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
   border-radius:10px; padding:10px 14px;
   font-size:11px; color:var(--text2); line-height:1.6;
 }
+
+/* ── TRIP PLANNER ───────────────────────────── */
+.qchip {
+  background:var(--navy3);border:1px solid var(--border);border-radius:99px;
+  padding:7px 12px;font-size:12px;font-weight:600;color:var(--text2);
+  white-space:nowrap;cursor:pointer;flex-shrink:0;
+}
+.qchip:active { background:var(--navy4);color:var(--cyan); }
+.result-card {
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:16px;margin-bottom:10px;
+}
+.result-eta-big {
+  font-size:64px;font-weight:800;font-family:var(--ff-head);line-height:1;margin:4px 0;
+}
+.result-row {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-top:1px solid var(--border);margin-top:6px;
+  font-size:13px;color:var(--text2);
+}
+.result-row b { color:var(--text1); }
+.sugg-item {
+  padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--text1);display:flex;align-items:center;gap:10px;
+}
+.sugg-item:last-child { border-bottom:none; }
+.sugg-item:active { background:var(--navy3); }
+.live-card {
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;margin-bottom:8px;
+  display:flex;align-items:center;gap:14px;cursor:pointer;
+}
+.live-eta-num {
+  font-size:36px;font-weight:800;font-family:var(--ff-head);
+  line-height:1;min-width:52px;text-align:center;
+}
 </style>
 </head>
 <body>
@@ -584,200 +620,63 @@ html, body { height:100%; overflow:hidden; background:var(--navy); color:var(--t
 
     <!-- ══ HOME ══ -->
     <div class="page on" id="page-home">
-      <div class="page-content">
+      <div class="page-content" style="padding:0">
 
-        <!-- Hero ETA Card -->
-        <!-- TARJETA PRINCIPAL: TU PARADA -->
-        <div class="hero-card" id="hero-card">
-          <div class="hero-line-badge">
-            <div class="hero-line-dot" id="hero-dot"></div>
-            <span id="home-live-txt">Línea M135 · Tiempo real</span>
+        <!-- ══ SEARCH BAR ══ -->
+        <div style="padding:14px 14px 0;position:sticky;top:0;background:var(--navy);z-index:10">
+          <div style="display:flex;gap:8px;align-items:center;
+            background:var(--navy3);border:1px solid var(--border);
+            border-radius:14px;padding:12px 14px;cursor:text"
+            onclick="document.getElementById('dest-input').focus()">
+            <div style="font-size:18px">🔍</div>
+            <input id="dest-input" type="text" placeholder="¿A dónde quieres ir?"
+              style="flex:1;background:none;border:none;outline:none;
+              font-size:15px;color:var(--text1);font-family:var(--ff-body)"
+              oninput="plannerSearch(this.value)"
+              onfocus="showPlannerSuggestions()"
+              onkeydown="if(event.key==='Enter')plannerGo()">
+            <div id="dest-clear" style="display:none;color:var(--text3);font-size:18px;cursor:pointer"
+              onclick="clearDest()">✕</div>
           </div>
-
-          <!-- ETA A TU PARADA — número más grande de la app -->
-          <div style="display:flex;align-items:flex-end;gap:0;margin:4px 0 2px">
-            <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;margin-right:8px">Bus en</div>
-            <div class="hero-eta-num" id="home-eta" style="font-size:72px;line-height:1">--</div>
-            <div class="hero-eta-unit" id="home-eta-unit" style="font-size:22px;margin-bottom:14px;margin-left:4px">min</div>
+          <!-- Quick destination chips -->
+          <div id="quick-chips" style="display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;
+            scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            <div class="qchip" onclick="setDest('Málaga Centro')">🏙️ Málaga</div>
+            <div class="qchip" onclick="setDest('Estación de Autobuses')">🚉 Est. Autobuses</div>
+            <div class="qchip" onclick="setDest('Aeropuerto')">✈️ Aeropuerto</div>
+            <div class="qchip" onclick="setDest('Santa Amalia')">🏠 Santa Amalia</div>
+            <div class="qchip" onclick="setDest('Teatinos')">🎓 Teatinos</div>
           </div>
-          <!-- Parada cercana del usuario -->
-          <div id="nearby-stop-label" style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:4px">📍 Detectando tu parada…</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div id="nearby-walk-label" style="font-size:12px;color:var(--text3);flex:1"></div>
-            <a id="nearby-maps-btn" href="#" target="_blank" style="display:none;
-              background:#1a3352;color:#00c8f0;font-size:11px;font-weight:700;
-              padding:6px 12px;border-radius:8px;text-decoration:none;white-space:nowrap;
-              border:1px solid #00c8f030;flex-shrink:0">
-              🗺️ Cómo llegar
-            </a>
-          </div>
-
-          <!-- Separador -->
-          <div style="border-top:1px solid var(--border);margin:0 -2px 12px;opacity:.4"></div>
-
-          <!-- BUS: dónde está y a qué parada va — info secundaria -->
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <div>
-              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:3px">Próxima parada del bus</div>
-              <div class="hero-stop" id="home-stop" style="font-size:13px;color:var(--text2)">Cargando…</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:3px">En ruta</div>
-              <div style="font-family:var(--ff-head);font-size:13px;font-weight:700" id="home-eta-bus">-- min</div>
-            </div>
-          </div>
-
-          <!-- Barra de progreso -->
-          <div class="hero-progress-wrap" style="margin-top:10px">
-            <div class="hero-progress-track">
-              <div class="hero-progress-fill" id="home-progress" style="width:0%"></div>
-            </div>
-          </div>
-
-          <!-- Stats fila -->
-          <div class="hero-stats" style="margin-top:12px">
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="home-co2">0g</div>
-              <div class="hero-stat-lbl">CO₂ ahorrado</div>
-            </div>
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="home-line">M135</div>
-              <div class="hero-stat-lbl">Línea activa</div>
-            </div>
-            <div class="hero-stat">
-              <div class="hero-stat-val" id="home-stops">--</div>
-              <div class="hero-stat-lbl">Paradas</div>
-            </div>
-          </div>
+          <!-- Search suggestions dropdown -->
+          <div id="planner-suggestions" style="display:none;background:var(--navy2);
+            border:1px solid var(--border);border-radius:12px;margin-top:4px;
+            max-height:200px;overflow-y:auto;z-index:20;position:relative"></div>
         </div>
 
-        <!-- Leave banner -->
-        <div id="home-leave"></div>
-
-        <!-- Nearby banner -->
-        <div id="nearby-banner" style="display:none;margin:8px 14px 0;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;gap:10px;align-items:center">
-          <div class="nb-icon" onclick="nav('map')">📍</div>
-          <div class="nb-info">
-            <div class="nb-name" id="nearby-name">Parada más cercana</div>
-            <div class="nb-dist" id="nearby-dist">Calculando…</div>
-          </div>
-          <div class="nb-right">
-            <div class="nb-eta" id="nearby-eta">--</div>
-          </div>
-        </div>
-          
+        <!-- ══ RESULT CARD (shown after destination set) ══ -->
+        <div id="planner-result" style="display:none;margin:12px 14px 0">
+          <!-- Filled by plannerGo() -->
         </div>
 
-        <!-- Trip Planner -->
-        <div class="sec-label">🧭 ¿A dónde vas?</div>
-        <div class="trip-wrap">
-          <div class="trip-input-row">
-            <input id="trip-dest" type="text" placeholder="Busca una parada o destino…" oninput="tripInput()" onkeydown="if(event.key==='Enter')planTrip()">
-            <div class="trip-go-btn" onclick="planTrip()">Ir</div>
+        <!-- ══ NO DESTINATION: Nearby buses ══ -->
+        <div id="nearby-section">
+          <!-- Live bus card -->
+          <div style="margin:12px 14px 0">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;
+              text-transform:uppercase;color:var(--text3);margin-bottom:8px">
+              🟢 En servicio ahora
+            </div>
+            <div id="live-bus-cards"></div>
           </div>
-          <div id="trip-suggestions"></div>
-          <div id="trip-result"></div>
-        </div>
 
-        <!-- ¿Llego? -->
-        <div class="sec-label">🎯 ¿Llego a tiempo?</div>
-        <div class="llego-wrap">
-          <div class="llego-result" id="llego-result"></div>
-        </div>
-
-        <!-- Share -->
-        <div class="sec-label">📤 Comparte tu viaje</div>
-        <div id="share-btn" class="share-btn" onclick="toggleShare()">
-          <span style="font-size:20px">📱</span>
-          <div>
-            <div style="font-weight:700">Compartir mi viaje por WhatsApp</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:2px">Envía un link con seguimiento en tiempo real</div>
+          <!-- All lines -->
+          <div style="margin:16px 14px 0">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;
+              text-transform:uppercase;color:var(--text3);margin-bottom:8px">
+              Líneas AVO Group
+            </div>
+            <div class="line-cards" id="home-line-cards"></div>
           </div>
-        </div>
-
-        <!-- CO2 -->
-        <div class="co2-badge" id="co2-badge">
-          <div class="co2-left">
-            <div class="co2-icon">🌱</div>
-            <div>
-              <div class="co2-label">CO₂ ahorrado hoy</div>
-              <div class="co2-trees" id="co2-trees">vs. ir en coche</div>
-            </div>
-          </div>
-          <div>
-            <div class="co2-val" id="co2-val">0g</div>
-          </div>
-        </div>
-
-        <!-- Lines -->
-        <div class="sec-label">🚌 Líneas AVO Group</div>
-        <div class="line-cards">
-          <div class="line-card lc-m135" onclick="nav('map');setLine('M135')">
-            <div class="lc-badge">M135</div>
-            <div class="lc-info">
-              <div class="lc-name">Alhaurín de la Torre → Málaga</div>
-              <div class="lc-desc">31 paradas · Línea regular</div>
-            </div>
-            <div class="lc-right">
-              <div class="lc-eta-val c135" id="lc-eta-M135" style="color:var(--cyan)">--</div>
-              <div class="lc-status">
-                <div class="lc-dot off" id="dot-M135"></div>
-                <div class="lc-dot-txt off" id="stxt-M135">--</div>
-              </div>
-            </div>
-            <div class="lc-star" id="fav-star-M135" onclick="event.stopPropagation();toggleFav('M135')">☆</div>
-          </div>
-          <div class="line-card lc-m170" onclick="nav('map');setLine('M170')">
-            <div class="lc-badge">M170</div>
-            <div class="lc-info">
-              <div class="lc-name">Pinos Alhaurín → Málaga Express</div>
-              <div class="lc-desc">14 paradas · Exprés</div>
-            </div>
-            <div class="lc-right">
-              <div class="lc-eta-val" id="lc-eta-M170" style="color:var(--green)">--</div>
-              <div class="lc-status">
-                <div class="lc-dot off" id="dot-M170"></div>
-                <div class="lc-dot-txt off" id="stxt-M170">--</div>
-              </div>
-            </div>
-            <div class="lc-star" id="fav-star-M170" onclick="event.stopPropagation();toggleFav('M170')">☆</div>
-          </div>
-          <div class="line-card lc-m143" onclick="nav('map');setLine('M143')">
-            <div class="lc-badge">M143</div>
-            <div class="lc-info">
-              <div class="lc-name">Alhaurín de la Torre → Teatinos</div>
-              <div class="lc-desc">22 paradas · Universitario</div>
-            </div>
-            <div class="lc-right">
-              <div class="lc-eta-val" id="lc-eta-M143" style="color:var(--amber)">--</div>
-              <div class="lc-status">
-                <div class="lc-dot off" id="dot-M143"></div>
-                <div class="lc-dot-txt off" id="stxt-M143">--</div>
-              </div>
-            </div>
-            <div class="lc-star" id="fav-star-M143" onclick="event.stopPropagation();toggleFav('M143')">☆</div>
-          </div>
-          <div class="line-card lc-mumfi" onclick="nav('map');setLine('MUMFI')">
-            <div class="lc-badge">MUMFI</div>
-            <div class="lc-info">
-              <div class="lc-name">Alhaurín de la Torre → Alquería</div>
-              <div class="lc-desc">14 paradas · A demanda</div>
-            </div>
-            <div class="lc-right">
-              <div class="lc-eta-val" id="lc-eta-MUMFI" style="color:var(--purple)">--</div>
-              <div class="lc-status">
-                <div class="lc-dot off" id="dot-MUMFI"></div>
-                <div class="lc-dot-txt off" id="stxt-MUMFI">--</div>
-              </div>
-            </div>
-            <div class="lc-star" id="fav-star-MUMFI" onclick="event.stopPropagation();toggleFav('MUMFI')">☆</div>
-          </div>
-        </div>
-
-        <!-- Favorites -->
-        <div id="favorites-section" style="display:none">
-          <div class="sec-label">⭐ Mis Favoritos</div>
-          <div class="favs-section" id="favorites-list"></div>
         </div>
 
       </div><!-- page-content -->
@@ -1274,6 +1173,7 @@ async function fetchAllLines() {
   updateNearbyBanner();
   renderFavorites();
   checkNotifications();
+  updateLiveBusCards();
   LINES.forEach(lid => trackPunctuality(lid, vehicles[lid]?.etas));
   // Hide second bus marker if vuelta bus went offline
   LINES.forEach(lid => {
@@ -2291,6 +2191,316 @@ function showSecondBus(v) {
 
 </script>
 <script>
+
+
+// ══ TRIP PLANNER ═══════════════════════════════════════════════════════════
+
+let plannerDest = null;  // { name, stopNombre, lineId, dir }
+
+// All known stops across all lines (built from stopsData after load)
+function getAllStops() {
+  const all = [];
+  const seen = new Set();
+  LINES.forEach(lid => {
+    (stopsData[lid]||[]).forEach(s => {
+      const key = (s.stopNombre||'').toLowerCase().trim();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      all.push({ name: s.stopNombre, lineId: lid, lat: s.lat, lon: s.lon });
+    });
+  });
+  // Add known destinations
+  ['Málaga Centro','Teatinos','Universidad de Málaga','Aeropuerto de Málaga'].forEach(n => {
+    if (!seen.has(n.toLowerCase())) all.push({ name: n, lineId: null, lat: null, lon: null });
+  });
+  return all;
+}
+
+function plannerSearch(q) {
+  const clear = document.getElementById('dest-clear');
+  if (clear) clear.style.display = q ? 'block' : 'none';
+  if (!q) { hideSuggestions(); return; }
+  const stops = getAllStops().filter(s =>
+    fuzzyScore(normalize(q), normalize(s.name)) > 0 ||
+    normalize(s.name).includes(normalize(q))
+  ).slice(0, 8);
+  showSuggestions(stops);
+}
+
+function showSuggestions(stops) {
+  const el = document.getElementById('planner-suggestions');
+  if (!el) return;
+  if (!stops.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = stops.map(s =>
+    `<div class="sugg-item" onclick="setDest('${s.name.replace(/'/g,"\'")}')">
+      <span style="font-size:16px">${s.lineId ? '🚏' : '📍'}</span>
+      <div>
+        <div style="font-weight:600">${s.name}</div>
+        ${s.lineId ? `<div style="font-size:11px;color:var(--text3)">${s.lineId}</div>` : ''}
+      </div>
+    </div>`
+  ).join('');
+}
+
+function showPlannerSuggestions() {
+  const q = document.getElementById('dest-input')?.value || '';
+  if (q) plannerSearch(q);
+}
+
+function hideSuggestions() {
+  const el = document.getElementById('planner-suggestions');
+  if (el) el.style.display = 'none';
+}
+
+function setDest(name) {
+  const input = document.getElementById('dest-input');
+  if (input) input.value = name;
+  const clear = document.getElementById('dest-clear');
+  if (clear) clear.style.display = 'block';
+  hideSuggestions();
+  plannerGo(name);
+}
+
+function clearDest() {
+  plannerDest = null;
+  const input = document.getElementById('dest-input');
+  if (input) input.value = '';
+  const clear = document.getElementById('dest-clear');
+  if (clear) clear.style.display = 'none';
+  document.getElementById('planner-result').style.display = 'none';
+  document.getElementById('nearby-section').style.display = 'block';
+  hideSuggestions();
+}
+
+// Core planner: given destination, find best route for user
+function plannerGo(destName) {
+  const dest = destName || document.getElementById('dest-input')?.value;
+  if (!dest) return;
+  hideSuggestions();
+
+  document.getElementById('planner-result').style.display = 'block';
+  document.getElementById('nearby-section').style.display = 'none';
+
+  // Find which line + direction serves this destination
+  const destNorm = normalize(dest);
+  const results = [];
+
+  LINES.forEach(lid => {
+    const stops = stopsData[lid] || [];
+    if (!stops.length) return;
+
+    // Find if destination matches a stop on this line
+    const destStopIdx = stops.findIndex(s => normalize(s.stopNombre||'').includes(destNorm) || destNorm.includes(normalize(s.stopNombre||'')));
+    if (destStopIdx < 0 && !isKnownDestination(dest, lid)) return;
+
+    // Find nearest boarding stop to user
+    const boardingStop = userLat
+      ? getNearestStop(stops.filter(s => s.lat && s.lon))
+      : stops[Math.floor(stops.length/2)];
+    if (!boardingStop) return;
+
+    const boardingIdx = stops.findIndex(s => normalize(s.stopNombre||'') === normalize(boardingStop.stopNombre||''));
+
+    // Determine direction: if dest is after boarding → ida, else vuelta
+    const dir = destStopIdx < 0
+      ? guessDirection(dest, lid)
+      : (destStopIdx > boardingIdx ? 'ida' : 'vuelta');
+
+    // Get live vehicle if available
+    const vIda    = vehicles[lid];
+    const vVuelta = vehicles[lid+'_V'];
+    const v = dir === 'ida' ? vIda : vVuelta;
+
+    // Find ETA to boarding stop
+    let etaMin = null, etaTime = null, isLive = false;
+    if (v?.isOnline && v?.etas) {
+      const eta = v.etas.find(e => normalize(e.stopNombre||'') === normalize(boardingStop.stopNombre||'') && e.status !== 'passed');
+      if (eta?.etaMinutes != null) { etaMin = eta.etaMinutes; isLive = true; }
+    }
+    if (etaMin === null) {
+      const sc = nextFromSchedule(lid, dir);
+      if (sc) { etaMin = sc.minsAway; etaTime = sc.time; }
+    }
+    if (etaMin === null) return;
+
+    // Walk time to boarding stop
+    const walkMin = userLat && boardingStop.lat
+      ? Math.max(1, Math.round(distM(userLat, userLon, boardingStop.lat, boardingStop.lon) / 80))
+      : null;
+
+    // Estimated trip duration (avg 2 min per stop)
+    const stopsCount = Math.abs(destStopIdx < 0 ? 10 : destStopIdx - boardingIdx);
+    const tripMin = Math.max(5, stopsCount * 2);
+    const arrivalMin = etaMin + tripMin;
+    const arrivalTime = new Date(Date.now() + arrivalMin * 60000)
+      .toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'});
+
+    const dirLabel = dir === 'ida' ? '→ Málaga' : '→ Alhaurín de la Torre';
+
+    results.push({ lid, dir, dirLabel, boardingStop, etaMin, etaTime, isLive,
+      walkMin, arrivalTime, arrivalMin, tripMin, stopsCount, color: COLORS[lid] });
+  });
+
+  renderPlannerResults(dest, results);
+}
+
+function isKnownDestination(dest, lineId) {
+  const d = normalize(dest);
+  const map = {
+    M135: ['malaga','estacion de autobuses','málaga centro','santa amalia','alhaurin'],
+    M143: ['malaga','teatinos','universidad','alhaurin'],
+    M170: ['malaga','pinos','alhaurin'],
+    MUMFI: ['alqueria','alhaurin'],
+  };
+  return (map[lineId]||[]).some(k => d.includes(k) || k.includes(d));
+}
+
+function guessDirection(dest, lineId) {
+  const d = normalize(dest);
+  const toMalaga = ['malaga','estacion','aeropuerto','teatinos','universidad','centro'];
+  return toMalaga.some(k => d.includes(k)) ? 'ida' : 'vuelta';
+}
+
+function renderPlannerResults(dest, results) {
+  const el = document.getElementById('planner-result');
+  if (!results.length) {
+    el.innerHTML = `
+      <div class="result-card">
+        <div style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:8px">
+          Sin resultados para "${dest}"
+        </div>
+        <div style="font-size:13px;color:var(--text3)">
+          Prueba con el nombre de una parada o ciudad.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Sort by total journey time
+  results.sort((a,b) => (a.etaMin + (a.walkMin||0)) - (b.etaMin + (b.walkMin||0)));
+
+  el.innerHTML = `
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">
+      Para ir a <b style="color:var(--text1)">${dest}</b>
+    </div>` +
+    results.slice(0,3).map((r, i) => {
+      const urgencyColor = r.etaMin<=3?'var(--red)':r.etaMin<=10?'var(--amber)':r.color;
+      const liveTag = r.isLive
+        ? `<span style="background:#00c8f020;color:var(--cyan);font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid var(--cyan)40">🟢 EN VIVO</span>`
+        : `<span style="background:#ffb02020;color:var(--amber);font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid #ffb02040">📅 HORARIO</span>`;
+      const walkInfo = r.walkMin
+        ? `${r.walkMin} min a pie hasta ${r.boardingStop.stopNombre}`
+        : `Sube en ${r.boardingStop.stopNombre}`;
+      const mapsUrl = r.boardingStop.lat
+        ? `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${r.boardingStop.lat},${r.boardingStop.lon}&travelmode=walking`
+        : null;
+
+      return `<div class="result-card ${i===0?'primary':''}" style="${i===0?'border-color:'+r.color+'60;':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="background:${r.color};color:#060d1a;font-size:12px;font-weight:800;
+              padding:3px 10px;border-radius:99px">${r.lid}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text2)">${r.dirLabel}</div>
+          </div>
+          ${liveTag}
+        </div>
+
+        <div style="display:flex;align-items:flex-end;gap:8px;margin:4px 0 12px">
+          <div class="result-eta-big" style="color:${urgencyColor}">${r.etaMin}</div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:20px;font-weight:700;color:var(--text1)">min</div>
+            <div style="font-size:11px;color:var(--text3)">${r.isLive ? 'tiempo real' : 'según horario'}</div>
+          </div>
+          <div style="flex:1;text-align:right;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--text3)">Llegas a</div>
+            <div style="font-size:18px;font-weight:700;font-family:var(--ff-head);color:var(--text1)">${r.arrivalTime}</div>
+          </div>
+        </div>
+
+        <div class="result-row">
+          <span>📍 Parada de subida</span>
+          <b>${r.boardingStop.stopNombre}</b>
+        </div>
+        <div class="result-row">
+          <span>🚶 A pie</span>
+          <b>${r.walkMin ? r.walkMin+' min ('+Math.round((r.walkMin*80))+'m)' : 'Activa GPS'}</b>
+        </div>
+        <div class="result-row">
+          <span>🚌 Viaje</span>
+          <b>~${r.tripMin} min · ${r.stopsCount} paradas</b>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <div onclick="openPlannerMap('${r.lid}','${r.dir}')"
+            style="flex:1;background:${r.color}20;color:${r.color};font-size:12px;
+            font-weight:700;padding:10px;border-radius:10px;text-align:center;cursor:pointer;
+            border:1px solid ${r.color}40">
+            🗺️ Ver en mapa
+          </div>
+          ${mapsUrl ? `<a href="${mapsUrl}" target="_blank"
+            style="flex:1;background:var(--navy3);color:var(--text1);font-size:12px;
+            font-weight:700;padding:10px;border-radius:10px;text-align:center;
+            text-decoration:none;border:1px solid var(--border)">
+            📍 Cómo llegar a pie
+          </a>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function openPlannerMap(lid, dir) {
+  activeLine = lid;
+  nav('map');
+}
+
+// ── Update live bus cards on home screen ──────────────────────────────────────
+function updateLiveBusCards() {
+  const el = document.getElementById('live-bus-cards');
+  if (!el) return;
+
+  const liveLines = LINES.filter(lid => {
+    const v = vehicles[lid];
+    return v?.isOnline && v?.updatedAt &&
+      (Date.now() - new Date(v.updatedAt).getTime()) < 5*60*1000;
+  });
+
+  if (!liveLines.length) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px 0">
+      Sin buses en servicio ahora mismo</div>`;
+    return;
+  }
+
+  el.innerHTML = liveLines.map(lid => {
+    const v = vehicles[lid];
+    const color = COLORS[lid];
+    const dir = busDirection[lid]?.label || v?.direction?.label || '';
+    const next = v.etas?.find(e=>e.status==='next');
+    const eta = next?.etaMinutes;
+    const etaColor = eta<=3?'var(--red)':eta<=8?'var(--amber)':color;
+
+    return `<div class="live-card" onclick="activeLine='${lid}';nav('map')">
+      <div style="text-align:center">
+        <div class="live-eta-num" style="color:${etaColor}">${eta!=null?eta:'--'}</div>
+        <div style="font-size:10px;color:var(--text3);font-weight:600">min</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="background:${color};color:#060d1a;font-size:11px;font-weight:800;
+            padding:2px 8px;border-radius:99px">${lid}</span>
+          <span style="font-size:12px;color:var(--text2);font-weight:600">${dir}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text1);font-weight:600">
+          ${next?.stopNombre || 'En ruta'}
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">
+          🟢 Tiempo real · Bus ${v.vehicleId||''}
+        </div>
+      </div>
+      <div style="color:var(--text3);font-size:20px">›</div>
+    </div>`;
+  }).join('');
+}
 
 // ── HISTORIAL DE PUNTUALIDAD ──────────────────────────────────────
 // Registra cada vez que el bus pasa por una parada con timestamp
