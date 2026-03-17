@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="AVO Bus">
 <meta name="theme-color" content="#050c18">
@@ -423,6 +424,21 @@ async function boot(){
   // STEP 4: Try backend in background
   gpsW();
   wsC();
+  // Immediate backend test
+  fetch(`${BE}/vehicles/M135`).then(r=>r.json()).then(d=>{
+    console.log('[AVO] Backend M135 test:',d?.lat?'lat='+d.lat+' lon='+d.lon:'NO DATA',d?.isOnline);
+    if(d?.lat){
+      const next=d.etas?.find(e=>e.status==='next');
+      S.v['M135']={lat:d.lat,lng:d.lon,speed:d.speedKmh||0,ts:Date.now(),
+        nextStopName:next?.stopNombre||'',nextStopEta:next?(next.etaSeconds||0):null,
+        etas:(d.etas||[]).filter(e=>e.status==='next'||e.status==='upcoming').map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,stopIdx:e.stopIndex})),
+        direction:d.dir||'ida'};
+      drStart('M135');
+      updETA();
+      if(S.pg==='pm'&&S.ml==='M135')updBuses();
+    }
+  }).catch(e=>console.log('[AVO] Backend error:',e.message));
+
   Promise.all(Object.keys(LL).map(l=>loadL(l))).then(()=>{
     updETA();
     if(S.pg==='ps')rStops();
@@ -775,7 +791,7 @@ function wsC(){
 // ── GPS ──
 function gpsW(){
   if(!navigator.geolocation)return;
-  navigator.geolocation.watchPosition(p=>{S.ulat=p.coords.latitude;S.ulng=p.coords.longitude;if(S.mi)updUMkr();updNear();},{},{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+  navigator.geolocation.watchPosition(p=>{S.ulat=p.coords.latitude;S.ulng=p.coords.longitude;if(S.mi)updUMkr();updNear();},e=>console.log('[GPS]',e.message),{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
 }
 
 // ── HOME ──
