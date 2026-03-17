@@ -428,8 +428,10 @@ async function boot(){
     if(S.pg==='ps')rStops();
     if(S.pg==='pm'&&S.mi){clRt();clSm();drRt(S.ml);drSm(S.ml);updBuses();}
   }).catch(()=>{});
-  setInterval(pollV,12000);
-  setInterval(updETA,6000);
+  setInterval(pollV,15000);
+  setInterval(updETA,5000);
+  // First poll immediately after static data loads
+  setTimeout(pollV, 800);
 }
 
 // Load real road geometry from OSRM (OpenStreetMap routing, free)
@@ -467,8 +469,16 @@ async function loadL(lid){
       fetch(`${BE}/lines/${lid}`,{signal:to}),
     ]);
     if(sr.status==='fulfilled'&&sr.value.ok){const d=await sr.value.json();const a=d.stops||d||[];if(a.length){const nn=nor(a);if(nn.length>=(S.st[lid]||[]).length){S.st[lid]=nn;S.st[lid+'_V']=(lid==='M135'?stSt('M135_V'):lid==='M143'?stSt('M143_V'):[...nn].reverse());}}}
-    if(vr.status==='fulfilled'&&vr.value.ok){const d=await vr.value.json();if(d?.lat)S.v[lid]={...d,ts:Date.now()};}
-    if(vvr.status==='fulfilled'&&vvr.value.ok){const d=await vvr.value.json();if(d?.lat)S.v[lid+'_V']={...d,ts:Date.now()};}
+    if(vr.status==='fulfilled'&&vr.value.ok){
+      const d=await vr.value.json();
+      if(d?.lat){S.v[lid]={...d,ts:Date.now()};drStart(lid);}
+      else if(Array.isArray(d)&&d[0]?.lat){S.v[lid]={...d[0],ts:Date.now()};drStart(lid);}
+    }
+    if(vvr.status==='fulfilled'&&vvr.value.ok){
+      const d=await vvr.value.json();
+      if(d?.lat){S.v[lid+'_V']={...d,ts:Date.now()};}
+      else if(Array.isArray(d)&&d[0]?.lat){S.v[lid+'_V']={...d[0],ts:Date.now()};}
+    }
     if(rr.status==='fulfilled'&&rr.value.ok){const d=await rr.value.json();const p=d.geometry||d.route||d.points||[];if(p.length)S.gm[lid]=p;}
   }catch(e){}
   if(!S.st[lid]||!S.st[lid].length) await loadAVOStops(lid);
@@ -654,15 +664,47 @@ function stSt(lid){
   return(D[lid]||[]).map(s=>({...s,raw:s}));
 }
 async function pollV(){
+  let anyUpdate=false;
   for(const lid of Object.keys(LL)){
     const to=AbortSignal.timeout?AbortSignal.timeout(4000):undefined;
+    let gotBackend=false;
+    // Intento 1: backend Railway
     try{
-      const[r1,r2]=await Promise.all([fetch(`${BE}/vehicles/${lid}`,{signal:to}),fetch(`${BE}/vehicles/${lid}_V`,{signal:to})]);
-      if(r1.ok){const d=await r1.json();if(d?.lat){S.v[lid]={...d,ts:Date.now()};drStart(lid);}}
-      if(r2.ok){const d=await r2.json();if(d?.lat)S.v[lid+'_V']={...d,ts:Date.now()};}
+      const[r1,r2]=await Promise.all([
+        fetch(`${BE}/vehicles/${lid}`,{signal:to}),
+        fetch(`${BE}/vehicles/${lid}_V`,{signal:to})
+      ]);
+      if(r1.ok){const d=await r1.json();if(d?.lat){S.v[lid]={...d,ts:Date.now()};drStart(lid);gotBackend=true;anyUpdate=true;}}
+      if(r2.ok){const d=await r2.json();if(d?.lat){S.v[lid+'_V']={...d,ts:Date.now()};gotBackend=true;anyUpdate=true;}}
     }catch(e){}
+    // Intento 2: API AVO directa si backend no responde
+    if(!gotBackend){
+      try{
+        const cod=LL[lid].cod;
+        const to2=AbortSignal.timeout?AbortSignal.timeout(6000):undefined;
+        const r=await fetch(`${API}?ACTION=VEHICULO_POSICION_GET&COMPANY=${CO}&COD_ENRUTA=${cod}`,{signal:to2});
+        if(r.ok){
+          const d=await r.json();
+          // AVO API returns array of vehicles
+          const buses=d.vehiculos||d.buses||d||[];
+          const arr=Array.isArray(buses)?buses:[buses];
+          arr.forEach(b=>{
+            const lat=+(b.LAT||b.lat||b.latitud||0);
+            const lng=+(b.LNG||b.lng||b.LON||b.lon||b.longitud||0);
+            if(!lat||!lng)return;
+            const dir=(b.COLOR||b.color||'')==='#2DA701'?'vuelta':'ida';
+            const key=dir==='vuelta'?lid+'_V':lid;
+            S.v[key]={lat,lng,speed:+(b.VELOCIDAD||b.velocidad||0),ts:Date.now(),
+              nextStopName:b.PROXIMA_PARADA||b.proxima_parada||'',
+              nextStopEta:+(b.ETA||b.eta||0)};
+            drStart(lid);
+            anyUpdate=true;
+          });
+        }
+      }catch(e){}
+    }
   }
-  updETA();
+  if(anyUpdate||true){updETA();}
   if(S.pg==='pm')updBuses();
   if(S.pg==='ps')rStops();
 }
@@ -672,7 +714,17 @@ function wsC(){
   try{
     S.ws=new WebSocket(WS);
     S.ws.onmessage=e=>{
-      try{const m=JSON.parse(e.data);if(m.type==='vehicle_update'){const k=m.direction==='vuelta'?m.line+'_V':m.line;S.v[k]={...(S.v[k]||{}),...m,ts:Date.now()};drStart(m.line);if(S.pg==='pm'&&S.ml===m.line)updBuses();if(S.pg==='ps'&&S.sl===m.line)rStops();updETA();}}catch(e){}
+      try{const m=JSON.parse(e.data);if(m.type==='vehicle_update'){
+          const k=m.direction==='vuelta'?m.line+'_V':m.line;
+          S.v[k]={...(S.v[k]||{}),...m,ts:Date.now()};
+          drStart(m.line);
+          if(S.pg==='pm'&&S.ml===m.line)updBuses();
+          if(S.pg==='ps'&&S.sl===m.line)rStops();
+          updETA();
+          // Flash live badge
+          const lb=document.getElementById('live-badge');
+          if(lb){lb.style.background='rgba(0,232,160,.25)';setTimeout(()=>lb.style.background='',500);}
+        }}catch(e){}
     };
     S.ws.onclose=()=>{S.wsr++;setTimeout(wsC,Math.min(30000,2000*S.wsr));};
     S.ws.onerror=()=>S.ws.close();
