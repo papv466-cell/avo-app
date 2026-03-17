@@ -925,7 +925,7 @@ function setMapDir(dir){
   S.mapDir=dir;
   document.getElementById('mdir-ida').style.color=dir==='i'?'var(--cyan)':'var(--t3)';
   document.getElementById('mdir-vta').style.color=dir==='v'?'var(--cyan)':'var(--t3)';
-  clRt();clSm();drRt(S.ml);drSm(S.ml);fitL(S.ml);
+  clRt();clSm();drRt(S.ml);drSm(S.ml);updBuses();fitL(S.ml);
   const key=dir==='v'?S.ml+'_V':S.ml;
   if(!S.gm[key]||S.gm[key].length<10) loadOSRM(S.ml,dir);
 }
@@ -966,11 +966,15 @@ function drSm(lid){
 function updBuses(){
   if(!S.lmap||!S.mi)return;
   Object.values(S.bm).forEach(m=>{try{S.lmap.removeLayer(m)}catch(e){}});S.bm={};
-  const lid=S.ml;
-  const vi=S.v[lid], vv=S.v[lid+'_V'];
-  console.log('[AVO] updBuses lid='+lid,'ida:',vi?vi.lat+','+vi.lng:'none','vuelta:',vv?vv.lat+','+vv.lng:'none');
-  if(vi?.lat&&vi?.lng){const m=mkBM(vi,lid,'i');if(m)S.bm[lid]=m;}
-  if(vv?.lat&&vv?.lng){const m=mkBM(vv,lid,'v');if(m)S.bm[lid+'_V']=m;}
+  const lid=S.ml, dir=S.mapDir||'i';
+  // Show ONLY the bus for the active direction
+  if(dir==='i'){
+    const v=S.v[lid];
+    if(v?.lat&&v?.lng){const m=mkBM(v,lid,'i');if(m)S.bm[lid]=m;}
+  } else {
+    const v=S.v[lid+'_V'];
+    if(v?.lat&&v?.lng){const m=mkBM(v,lid,'v');if(m)S.bm[lid+'_V']=m;}
+  }
   updBP();updMStat();
 }
 function mkBM(v,lid,dir){
@@ -982,11 +986,12 @@ function mkBM(v,lid,dir){
 }
 function updBP(){
   const el=document.getElementById('bp'),lid=S.ml;
-  const v=S.v[lid]||S.v[lid+'_V'];
+  const dir=S.mapDir||'i';
+  const v=dir==='i'?S.v[lid]:S.v[lid+'_V'];
   if(!v){el.classList.remove('on');return;}
   el.classList.add('on');
   document.getElementById('bp-l').textContent=`🚌 ${lid}`;
-  document.getElementById('bp-d').textContent=S.v[lid]?LL[lid].ida:LL[lid].vta;
+  document.getElementById('bp-d').textContent=dir==='i'?LL[lid].ida:LL[lid].vta;
   const ago=v.ts?Math.round((Date.now()-v.ts)/1000):999;
   const ge=document.getElementById('bp-g');
   ge.innerHTML=ago<90?`<span class="gok">● GPS vivo</span>`:`⚠️ GPS ${ago}s`;
@@ -1033,13 +1038,20 @@ function rctr(){
 function drStart(lid){
   if(S.drt[lid])clearInterval(S.drt[lid]);
   S.drt[lid]=setInterval(()=>{
-    const v=S.v[lid];if(!v?.lat||!v?.ts)return;
-    if(S.pg!=='pm'||S.ml!==lid||!S.lmap)return;
+    const dir=S.mapDir||'i';
+    const key=dir==='i'?lid:lid+'_V';
+    const v=S.v[key];if(!v?.lat||!v?.ts)return;
+    if(S.pg!=='pm'||S.ml!==lid||!S.lmap||!S.mi)return;
     const el=(Date.now()-v.ts)/1000;if(el<2||el>90)return;
     const spd=Math.max(5,Math.min(+v.speed||20,80))*1000/3600;
     const mv=spd*el;
-    const gm=S.gm[lid];
-    if(gm?.length>1){const pos=rSnap(+v.lat,+(v.lng||v.lon),gm,mv);if(pos&&S.bm[lid])S.bm[lid].setLatLng(pos);}
+    const gmKey=dir==='i'?lid:lid+'_V';
+    const gm=S.gm[gmKey]||S.gm[lid];
+    const marker=S.bm[key];
+    if(gm?.length>1&&marker){
+      const pos=rSnap(+v.lat,+(v.lng||v.lon),gm,mv);
+      if(pos)marker.setLatLng(pos);
+    }
   },2000);
 }
 function rSnap(la,lo,gm,adv){
