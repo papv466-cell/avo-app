@@ -2803,4 +2803,9 @@ window.addEventListener('online', () => {
   setTimeout(checkIOSInstall, 3000);
   setTimeout(checkOnboarding, 2000);
   // Set app URL display
-  const urlEl = document
+  const urlEl = documentgetElementById('app-url-display');
+  if (urlEl) urlEl.textContent = window.location.hostname + window.location.pathname;
+});
+</script>
+</body>
+</html>
