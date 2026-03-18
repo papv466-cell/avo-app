@@ -709,62 +709,80 @@ async function pollV(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
 
   for(const lid of Object.keys(LL)){
-    const cod=LL[lid].cod;
-    let gotLive=false;
-
-    // 1) Direct AVO API for live GPS (bypasses backend cache issues)
-    try{
-      const r=await fetch(`${API}?ACTION=VEHICULO_POSICION_GET&COMPANY=${CO}&COD_ENRUTA=${cod}`,{signal:to(7000)});
-      if(r.ok){
-        const d=await r.json();
-        const arr=Array.isArray(d)?d:(d.vehiculos||d.buses||(d.LAT?[d]:[]));
-        for(const b of arr){
-          const lat=+(b.LAT||b.lat||0);
-          const lng=+(b.LNG||b.lng||b.LON||b.lon||0);
-          if(!lat||!lng)continue;
-          const col=(b.COLOR||b.color||'').replace(/\s/g,'');
-          const isVuelta=col==='#2DA701';
-          const key=isVuelta?lid+'_V':lid;
-          const existing=S.v[key]||{};
-          S.v[key]={...existing,lat,lng,
-            speed:+(b.VELOCIDAD||b.velocidad||0),
-            ts:Date.now(),
-            direction:isVuelta?'vuelta':'ida'};
-          gotLive=true;
-          drStart(lid);
-        }
-      }
-    }catch(e){}
-
-    // 2) Backend for ETAs (may have stale position but good ETA data)
     try{
       const[r1,r2]=await Promise.all([
-        fetch(`${BE}/vehicles/${lid}`,{signal:to(5000)}),
-        fetch(`${BE}/vehicles/${lid}_V`,{signal:to(5000)})
+        fetch(`${BE}/vehicles/${lid}`,{signal:to(6000)}),
+        fetch(`${BE}/vehicles/${lid}_V`,{signal:to(6000)})
       ]);
-      for(const[r,key] of [[r1,lid],[r2,lid+'_V']]){
+
+      for(const[r,defaultKey] of [[r1,lid],[r2,lid+'_V']]){
         if(!r.ok)continue;
         const d=await r.json();
         if(!d?.lat||!d?.lon)continue;
+
+        // Detect real direction from position:
+        // Málaga area: lon > -4.47, Alhaurín area: lon < -4.52
+        // Between: use backend's dir field
+        const lon=d.lon;
+        let realDir;
+        if(lon > -4.47) realDir='ida';        // Near Málaga = IDA bus
+        else if(lon < -4.52) realDir='vuelta'; // Near Alhaurín = VUELTA bus
+        else realDir=d.dir||'ida';             // In between: trust backend
+
+        const key=realDir==='vuelta'?lid+'_V':lid;
+
+        // Get ETAs - filter to only upcoming (not passed)
         const next=d.etas?.find(e=>e.status==='next');
         const etas=(d.etas||[])
           .filter(e=>e.status==='next'||e.status==='upcoming')
           .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,stopIdx:e.stopIndex}));
-        if(gotLive&&S.v[key]){
-          // Keep live position, add ETAs from backend
-          S.v[key]={...S.v[key],
-            nextStopName:next?.stopNombre||'',
-            nextStopEta:next?(next.etaSeconds||0):null,
-            etas};
-        } else {
-          // Use backend position if no direct AVO data
-          S.v[key]={lat:d.lat,lng:d.lon,speed:d.speedKmh||0,
-            ts:Date.now(),
-            nextStopName:next?.stopNombre||'',
-            nextStopEta:next?(next.etaSeconds||0):null,
-            etas,direction:d.dir||'ida'};
-          drStart(lid);
+
+        // For IDA: ETAs should be stops going TOWARDS Alhaurín from current pos
+        // For VUELTA: ETAs should be stops going TOWARDS Málaga from current pos  
+        // The backend already computed these - just use them if direction matches
+        // If direction doesn't match, reverse-lookup from our static stops
+
+        const staticStops=S.st[key]||[];
+        let finalEtas=etas;
+
+        if(etas.length>0){
+          // Verify ETAs match direction: 
+          // IDA bus (going to Málaga) should have stops with increasing lon (going east)
+          // VUELTA bus (going to Alhaurín) should have stops with decreasing lon (going west)
+          if(etas.length>=2){
+            const firstStop=d.etas?.find(e=>e.status==='next');
+            const secondStop=etas[1];
+            if(firstStop&&secondStop){
+              const firstLon=d.etas.find(e=>e.stopNombre===firstStop.stopNombre)?.lon;
+              const secondLon=d.etas.find(e=>e.stopNombre===secondStop.stopName)?.lon;
+              if(firstLon&&secondLon){
+                const movingEast=secondLon>firstLon;
+                // If movement direction contradicts our realDir, recalculate from static stops
+                if((realDir==='ida'&&!movingEast)||(realDir==='vuelta'&&movingEast)){
+                  // Use our static stops instead
+                  finalEtas=calcEtasFromStops(d.lat,d.lon,d.speedKmh||20,staticStops);
+                }
+              }
+            }
+          }
+        } else if(staticStops.length>0){
+          finalEtas=calcEtasFromStops(d.lat,d.lon,d.speedKmh||20,staticStops);
         }
+
+        S.v[key]={
+          lat:d.lat, lng:d.lon,
+          speed:d.speedKmh||0,
+          ts:Date.now(),
+          nextStopName:finalEtas[0]?.stopName||next?.stopNombre||'',
+          nextStopEta:finalEtas[0]!=null?(finalEtas[0].etaMin*60):next?(next.etaSeconds||0):null,
+          etas:finalEtas,
+          direction:realDir
+        };
+        // Clear the other key if same vehicle was there
+        const otherKey=key===lid?lid+'_V':lid;
+        if(S.v[otherKey]?.lat===d.lat&&S.v[otherKey]?.lng===d.lon) delete S.v[otherKey];
+
+        drStart(lid);
       }
     }catch(e){}
   }
@@ -772,6 +790,28 @@ async function pollV(){
   updETA();
   if(S.pg==='pm')updBuses();
   if(S.pg==='ps')rStops();
+}
+
+// Calculate ETAs from static stops based on current position
+function calcEtasFromStops(lat,lon,speedKmh,stops){
+  if(!stops?.length)return[];
+  // Find closest stop
+  let minD=Infinity,minI=0;
+  stops.forEach((s,i)=>{
+    if(!s.A||!s.G)return;
+    const d=hav(lat,lon,s.A,s.G);
+    if(d<minD){minD=d;minI=i;}
+  });
+  // Return next 6 stops with estimated ETAs
+  const spd=Math.max(10,speedKmh)*1000/3600; // m/s
+  let cumD=minD;
+  return stops.slice(minI+1,minI+7).map((s,i)=>{
+    if(!s.A||!s.G)return null;
+    const prev=stops[minI+i]||stops[minI];
+    cumD+=hav(prev.A||lat,prev.G||lon,s.A,s.G);
+    const etaSec=cumD/spd;
+    return{stopName:(s.N||'').split(',')[0],etaMin:Math.round(etaSec/60),stopIdx:minI+i+1};
+  }).filter(Boolean);
 }
 
 // ── WS ──
