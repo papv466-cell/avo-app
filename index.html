@@ -597,24 +597,22 @@ function updateHomeCards(){
     const statEl=document.getElementById('lcs-'+lid);
     if(!numEl)continue;
 
-    // Get fresh buses (data <5min old)
-    const bi=S.buses[lid], bv=S.buses[lid+'_V'];
-    const fresh=b=>b?.lat&&b?.ts&&(Date.now()-b.ts)<300000;
-    const fbi=fresh(bi)?bi:null, fbv=fresh(bv)?bv:null;
+    const fresh=b=>b?.lat&&b?.ts&&(Date.now()-b.ts)<600000;
+    const bi=fresh(S.buses[lid])?S.buses[lid]:null;
+    const bv=fresh(S.buses[lid+'_V'])?S.buses[lid+'_V']:null;
 
-    if(fbi||fbv){
-      // At least one active bus
-      const elapsed_i=fbi?.ts?(Date.now()-fbi.ts)/1000:0;
-      const elapsed_v=fbv?.ts?(Date.now()-fbv.ts)/1000:0;
-      const etaI=fbi?.nextStopEta!=null?Math.max(0,fbi.nextStopEta-elapsed_i):null;
-      const etaV=fbv?.nextStopEta!=null?Math.max(0,fbv.nextStopEta-elapsed_v):null;
+    if(bi||bv){
+      const elapsed_i=bi?.ts?(Date.now()-bi.ts)/1000:0;
+      const elapsed_v=bv?.ts?(Date.now()-bv.ts)/1000:0;
+      const etaI=bi?.nextStopEta!=null?Math.max(0,bi.nextStopEta-elapsed_i):null;
+      const etaV=bv?.nextStopEta!=null?Math.max(0,bv.nextStopEta-elapsed_v):null;
 
-      let best=null, bestB=null;
-      if(etaI!=null&&(etaV==null||etaI<=etaV)){best=etaI;bestB=fbi;}
-      else if(etaV!=null){best=etaV;bestB=fbv;}
+      let best=null,bestB=null;
+      if(etaI!=null&&(etaV==null||etaI<=etaV)){best=etaI;bestB=bi;}
+      else if(etaV!=null){best=etaV;bestB=bv;}
 
       const mins=best!=null?Math.round(best/60):null;
-      const nb=[fbi,fbv].filter(Boolean).length;
+      const nb=[bi,bv].filter(Boolean).length;
 
       if(mins!=null){
         numEl.textContent=mins;
@@ -623,11 +621,13 @@ function updateHomeCards(){
       } else {
         numEl.textContent='●';numEl.style.color='var(--green)';unitEl.textContent='';
       }
-      const dir=bestB===fbi?ln.ida:ln.vta;
-      statEl.textContent='● '+(nb>1?nb+' buses':'Bus activo')+' · '+dir+(bestB?.nextStopName?' · '+bestB.nextStopName:'');
+
+      // Show REAL direction based on detected direction
+      const dirLabel=bestB?.direction==='vuelta'?ln.vta:ln.ida;
+      const nextStop=bestB?.nextStopName?(' · '+(bestB.nextStopName).replace(/,.*$/,'')):'';
+      statEl.textContent='● '+(nb>1?nb+' buses · ':'')+dirLabel+nextStop;
       statEl.className='lcard-status active';
     } else {
-      // No active bus - next scheduled
       const sched=SCH[lid]?.[dk];
       if(sched){
         const allT=[...(sched.ida||[]),...(sched.vta||[])]
@@ -637,10 +637,7 @@ function updateHomeCards(){
         if(nxt!=null){
           const diff=nxt-nowM;
           if(diff<=90){numEl.textContent=diff;unitEl.textContent='min';}
-          else{
-            numEl.textContent=`${String(Math.floor(nxt/60)).padStart(2,'0')}:${String(nxt%60).padStart(2,'0')}`;
-            unitEl.textContent='';
-          }
+          else{numEl.textContent=`${String(Math.floor(nxt/60)).padStart(2,'0')}:${String(nxt%60).padStart(2,'0')}`;unitEl.textContent='';}
           numEl.style.color='var(--ink2)';
           statEl.textContent='Según horario';statEl.className='lcard-status';
         } else {
@@ -654,63 +651,109 @@ function updateHomeCards(){
 
 function updateNearStop(){
   const el=document.getElementById('near-wrap');if(!el)return;
-  if(!S.ulat){
-    el.innerHTML='<div class="near-card" onclick="startGPS()"><div class="near-icon">📍</div><div class="near-info"><div class="near-name">Activa tu ubicación</div><div class="near-sub">Para ver tu parada más cercana</div></div></div>';
-    return;
-  }
-  let best=null,bd=Infinity,bl=null;
+  if(!S.ulat){showGPSPrompt();return;}
+
+  // Find closest stop across all lines
+  let best=null,bd=Infinity,bl=null,bIdx=0;
   for(const[lid,st]of Object.entries(S.stops)){
     if(lid.includes('_V'))continue;
-    for(const s of st){
+    for(let i=0;i<st.length;i++){
+      const s=st[i];
       if(!s.A||!s.G)continue;
       const d=haversine(S.ulat,S.ulng,s.A,s.G);
-      if(d<bd){bd=d;best=s;bl=lid;}
+      if(d<bd){bd=d;best=s;bl=lid;bIdx=i;}
     }
   }
   if(!best||bd>3000){el.innerHTML='';return;}
 
   const walk=Math.max(1,Math.round(bd/75));
   const ln=LINES[bl];
-
-  // Best ETA for this line - only from UPCOMING stops
   const now=new Date();
   const nowM=now.getHours()*60+now.getMinutes();
   const dk=['do','lv','lv','lv','lv','lv','sa'][now.getDay()];
-  const bi=S.buses[bl],bv=S.buses[bl+'_V'];
-  const fresh=b=>b?.lat&&b?.ts&&(Date.now()-b.ts)<300000;
 
+  // Check if any active bus will reach this stop
+  // A bus will reach this stop if it's heading in the right direction AND hasn't passed it yet
   let etaHtml='';
-  const fbi=fresh(bi)?bi:null,fbv=fresh(bv)?bv:null;
-  if(fbi||fbv){
-    const e_i=fbi?.ts?(Date.now()-fbi.ts)/1000:0;
-    const e_v=fbv?.ts?(Date.now()-fbv.ts)/1000:0;
-    const etaI=fbi?.nextStopEta!=null?Math.max(0,Math.round((fbi.nextStopEta-e_i)/60)):null;
-    const etaV=fbv?.nextStopEta!=null?Math.max(0,Math.round((fbv.nextStopEta-e_v)/60)):null;
-    const best_eta=etaI!=null&&(etaV==null||etaI<=etaV)?etaI:etaV;
-    const col=best_eta<3?'var(--green)':best_eta<10?'var(--cyan)':'var(--ink)';
-    etaHtml=`<div class="near-eta"><div class="near-eta-num" style="color:${col}">${best_eta??'●'}</div><div class="near-eta-unit">${best_eta!=null?'min':'GPS vivo'}</div></div>`;
-  } else {
+  let foundActiveBus=false;
+
+  const fresh=b=>b?.lat&&b?.ts&&(Date.now()-b.ts)<600000;
+  const bi=fresh(S.buses[bl])?S.buses[bl]:null;
+  const bv=fresh(S.buses[bl+'_V'])?S.buses[bl+'_V']:null;
+
+  // Check each active bus
+  for(const b of [bi,bv].filter(Boolean)){
+    // Find if this stop appears in bus's upcoming stops
+    const eta=b.etas?.find(e=>{
+      const n=(e.stopName||'').toLowerCase();
+      const s2=best.N.toLowerCase();
+      // Match by name (partial match)
+      return n.includes(s2.split(' ')[0].toLowerCase())||
+             s2.includes((n.split(' ')[0]||'').toLowerCase());
+    });
+    if(eta&&eta.etaSec!=null){
+      const elapsed=b.ts?(Date.now()-b.ts)/1000:0;
+      const liveSec=Math.max(0,eta.etaSec-elapsed);
+      const liveMin=Math.round(liveSec/60);
+      const col=liveMin<3?'var(--green)':liveMin<10?'var(--cyan)':'var(--ink)';
+      const dir=b.direction==='vuelta'?ln.vta:ln.ida;
+      etaHtml=`<div class="near-eta">
+        <div class="near-eta-num" style="color:${col}">${liveMin}</div>
+        <div class="near-eta-unit">min · GPS</div>
+      </div>`;
+      foundActiveBus=true;
+      break;
+    }
+  }
+
+  // No active bus reaching this stop → show next scheduled time
+  if(!foundActiveBus){
     const sched=SCH[bl]?.[dk];
     if(sched){
-      const allT=[...(sched.ida||[]),...(sched.vta||[])].map(t=>{const[h,m]=t.split(':').map(Number);return h*60+m;}).filter(t=>!isNaN(t)).sort((a,b)=>a-b);
-      const nxt=allT.find(t=>t>nowM);
-      if(nxt!=null){
-        const diff=nxt-nowM;
-        const txt=diff<=90?diff:`${String(Math.floor(nxt/60)).padStart(2,'0')}:${String(nxt%60).padStart(2,'0')}`;
-        etaHtml=`<div class="near-eta"><div class="near-eta-num" style="font-size:${diff<=90?'24':'18'}px;color:var(--ink2)">${txt}</div><div class="near-eta-unit">${diff<=90?'min':'próximo'}</div></div>`;
+      // Get all scheduled times for both directions
+      const allT=[
+        ...(sched.ida||[]).map(t=>({t,dir:'ida'})),
+        ...(sched.vta||[]).map(t=>({t,dir:'vta'}))
+      ].map(({t,dir})=>{
+        const[h,m]=t.split(':').map(Number);
+        return{min:h*60+m,t,dir};
+      }).filter(x=>!isNaN(x.min)).sort((a,b)=>a.min-b.min);
+
+      const nxt=allT.find(x=>x.min>nowM);
+      if(nxt){
+        const diff=nxt.min-nowM;
+        const hh=String(Math.floor(nxt.min/60)).padStart(2,'0');
+        const mm=String(nxt.min%60).padStart(2,'0');
+        const col='var(--ink2)';
+        if(diff<=90){
+          etaHtml=`<div class="near-eta">
+            <div class="near-eta-num" style="color:${col};font-size:22px">${diff}</div>
+            <div class="near-eta-unit">min · horario</div>
+          </div>`;
+        } else {
+          etaHtml=`<div class="near-eta">
+            <div class="near-eta-num" style="color:${col};font-size:20px">${hh}:${mm}</div>
+            <div class="near-eta-unit">próximo</div>
+          </div>`;
+        }
+      } else {
+        etaHtml=`<div class="near-eta">
+          <div class="near-eta-num" style="color:var(--ink3);font-size:14px">—</div>
+          <div class="near-eta-unit">sin más hoy</div>
+        </div>`;
       }
     }
   }
 
   const mapsUrl=`https://maps.google.com/?q=${best.A},${best.G}`;
-  el.innerHTML=`<div class="near-card" onclick="window.open('${mapsUrl}')">
+  el.innerHTML=`<div class="near-card">
     <div class="near-icon">📍</div>
-    <div class="near-info">
-      <div class="near-name">${best.N}</div>
+    <div class="near-info" onclick="window.open('${mapsUrl}')">
+      <div class="near-name">${best.N.replace(/,.*$/, '')}</div>
       <div class="near-sub">${ln?.id||bl} · ${walk<=1?'Aquí mismo':walk+' min a pie'}</div>
     </div>
     ${etaHtml}
-    ${bd>200?`<button class="near-maps-btn" onclick="event.stopPropagation();window.open('${mapsUrl}')">Maps</button>`:''}
+    ${bd>300?`<button class="near-maps-btn" onclick="window.open('${mapsUrl}')">Maps</button>`:''}
   </div>`;
 }
 
@@ -739,39 +782,38 @@ function drawMap(){
   const lid=S.ml, dir=S.md;
   const ln=LINES[lid];
 
-  // Clear old layers
+  // Clear old route lines
   Object.values(S.routeLines).forEach(l=>{try{S.map.removeLayer(l)}catch(e){}});
   S.routeLines={};
+
+  // Hide all stop markers, show only current line's
   Object.values(S.stopMarkers).flat().forEach(m=>{try{m.setStyle({opacity:0,fillOpacity:0})}catch(e){}});
-  Object.values(S.markers).forEach(m=>{try{S.map.removeLayer(m)}catch(e){}});
-  S.markers={};
+  if(S.stopMarkers[lid]) S.stopMarkers[lid].forEach(m=>m.setStyle({opacity:1,fillOpacity:.9}));
 
   // Draw route
   const routeKey=dir==='v'?lid+'_V':lid;
-  const routePts=ROUTES[routeKey]||ROUTES[lid]||[];
-  if(routePts.length>1){
-    S.routeLines[routeKey]=L.polyline(routePts,{color:ln.col,weight:3.5,opacity:.85,lineJoin:'round'}).addTo(S.map);
+  const hardcoded=ROUTES[routeKey]||ROUTES[lid];
+  
+  if(hardcoded&&hardcoded.length>1){
+    // Use hardcoded route (M135 verified)
+    S.routeLines[routeKey]=L.polyline(hardcoded,{color:ln.col,weight:3.5,opacity:.85,lineJoin:'round'}).addTo(S.map);
+    drawBuses();
+    const stops=S.stops[dir==='v'?lid+'_V':lid]||S.stops[lid]||[];
+    const pts=stops.filter(s=>s.A&&s.G).map(s=>[s.A,s.G]);
+    if(pts.length>1) S.map.fitBounds(L.polyline(hardcoded).getBounds(),{padding:[60,60]});
   } else {
-    // OSRM fallback for other lines
+    // Use OSRM for real road routing
     const stops=S.stops[dir==='v'?lid+'_V':lid]||S.stops[lid]||[];
     const pts=stops.filter(s=>s.A&&s.G).map(s=>[s.A,s.G]);
     if(pts.length>1){
-      loadOSRM(pts,ln.col).then(line=>{if(line)S.routeLines[routeKey]=line.addTo(S.map);});
+      S.map.fitBounds(L.latLngBounds(pts),{padding:[60,60]});
+      loadOSRM(pts,ln.col).then(line=>{
+        if(line){S.routeLines[routeKey]=line.addTo(S.map);}
+        else{S.routeLines[routeKey]=L.polyline(pts,{color:ln.col,weight:2,opacity:.5,dashArray:'6,4'}).addTo(S.map);}
+      });
     }
+    drawBuses();
   }
-
-  // Show stop markers for this line
-  const stopKey=dir==='v'?lid+'_V':lid;
-  if(S.stopMarkers[lid]){
-    S.stopMarkers[lid].forEach(m=>m.setStyle({opacity:1,fillOpacity:.9}));
-  }
-
-  // Show buses
-  drawBuses();
-
-  // Fit map
-  const allPts=routePts.length?routePts:(S.stops[lid]||[]).filter(s=>s.A&&s.G).map(s=>[s.A,s.G]);
-  if(allPts.length>1) S.map.fitBounds(allPts,{padding:[60,60]});
 }
 
 async function loadOSRM(pts,color){
@@ -790,33 +832,35 @@ async function loadOSRM(pts,color){
 function drawBuses(){
   if(!S.mapReady||!S.map)return;
   const lid=S.ml;
-  const bi=S.buses[lid], bv=S.buses[lid+'_V'];
-  // Accept buses up to 10 minutes old (GPS may be slow)
   const fresh=b=>b?.lat&&b?.lng&&b?.ts&&(Date.now()-b.ts)<600000;
 
+  // Show BOTH buses on map always (user can see both)
+  // But highlight the one matching selected direction
   [
-    {b:bi,key:lid,isVta:false},
-    {b:bv,key:lid+'_V',isVta:true}
+    {b:S.buses[lid],    key:lid,      isVta:false},
+    {b:S.buses[lid+'_V'],key:lid+'_V',isVta:true}
   ].forEach(({b,key,isVta})=>{
     if(!fresh(b)){
-      // Remove stale marker
       if(S.markers[key]){try{S.map.removeLayer(S.markers[key])}catch(e){}delete S.markers[key];}
       return;
     }
     const col=LINES[lid]?.col||'#00d4ff';
-    const age=Math.round((Date.now()-b.ts)/1000);
+    // Dim buses not matching selected direction
+    const isSelected=(S.md==='i'&&!isVta)||(S.md==='v'&&isVta);
+    const opacity=isSelected?1:0.4;
+    const size=isSelected?28:20;
     const icon=L.divIcon({
-      html:`<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 12px ${col});transform:translate(-50%,-50%);cursor:pointer">${isVta?'🚍':'🚌'}</div>`,
+      html:`<div style="font-size:${size}px;line-height:1;opacity:${opacity};filter:drop-shadow(0 2px 8px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
       iconSize:[0,0],iconAnchor:[0,0],className:''
     });
     if(S.markers[key]){
-      // Update existing marker position
       S.markers[key].setLatLng([b.lat,b.lng]);
       S.markers[key].setIcon(icon);
     } else {
-      // Create new marker
-      const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:1000}).addTo(S.map);
-      m.bindPopup(`<b>${lid} ${isVta?LINES[lid]?.vta:LINES[lid]?.ida}</b><br><small>${Math.round(b.speedKmh||0)} km/h · Datos de hace ${age}s</small>`);
+      const ln=LINES[lid];
+      const dirLabel=isVta?ln.vta:ln.ida;
+      const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:isSelected?1000:500}).addTo(S.map);
+      m.bindPopup(`<b>${lid} ${dirLabel}</b><br><small>${Math.round(b.speedKmh||0)} km/h</small>`);
       S.markers[key]=m;
     }
   });
@@ -890,6 +934,7 @@ function setDir(d){
   document.getElementById('dir-ida').className='dir-btn'+(d==='i'?' on':'');
   document.getElementById('dir-vta').className='dir-btn'+(d==='v'?' on':'');
   drawMap();
+  updateBusPanel();
 }
 
 function setMapLine(lid){
