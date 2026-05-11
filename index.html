@@ -1144,18 +1144,43 @@ function snapToRoute(lat,lon,route,distAhead){
 // ═══════════════════════════════════════════════════════════════════
 async function poll(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
+  
+  // Málaga terminus keywords - if last stop contains these = bus going TO Málaga (ida)
+  const MALAGA_TERMS=['autobuses','estación','málaga','malaga','velázquez','velazquez','perchel'];
+  // Alhaurín terminus keywords - if last stop contains these = bus going TO Alhaurín (vuelta)  
+  const ALHA_TERMS=['santa amalia','amalia','romeral','torrealquería','torrealqueria','alhaurín','alhaurin','pinos'];
+
+  function detectDir(upcoming, backendDir){
+    if(!upcoming||upcoming.length===0) return backendDir||'ida';
+    // Check last upcoming stop name
+    const lastStop=(upcoming[upcoming.length-1].stopName||'').toLowerCase();
+    const firstStop=(upcoming[0].stopName||'').toLowerCase();
+    if(MALAGA_TERMS.some(t=>lastStop.includes(t))) return 'ida';   // ends in Málaga
+    if(ALHA_TERMS.some(t=>lastStop.includes(t))) return 'vuelta';  // ends in Alhaurín
+    // Fallback: check longitude movement
+    if(upcoming.length>=2){
+      const lonFirst=upcoming[0].lon||0;
+      const lonLast=upcoming[upcoming.length-1].lon||0;
+      if(lonFirst&&lonLast){
+        if(lonLast>lonFirst+0.005) return 'ida';    // moving east = to Málaga
+        if(lonLast<lonFirst-0.005) return 'vuelta'; // moving west = to Alhaurín
+      }
+    }
+    return backendDir||'ida';
+  }
+
   for(const lid of Object.keys(LINES)){
     try{
       const[r1,r2]=await Promise.all([
         fetch(`${BE}/vehicles/${lid}`,{signal:to(8000)}),
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to(8000)})
       ]);
-      for(const[r,fallbackDir] of [[r1,'ida'],[r2,'vuelta']]){
+      for(const r of [r1,r2]){
         if(!r.ok)continue;
         const d=await r.json();
         if(!d?.lat||!d?.lon||!d?.isOnline)continue;
 
-        // Only keep UPCOMING stops (next + upcoming), NOT passed ones
+        // Only upcoming stops
         const upcoming=(d.etas||[])
           .filter(e=>e.status==='next'||e.status==='upcoming')
           .map(e=>({
@@ -1167,21 +1192,10 @@ async function poll(){
           }));
 
         const next=d.etas?.find(e=>e.status==='next');
-
-        // Determine real direction from upcoming stops movement
-        // If upcoming stops move westward (lon decreasing) = going to Alhaurín (vuelta)
-        // If upcoming stops move eastward (lon increasing) = going to Málaga (ida)
-        let dir=d.dir||fallbackDir;
-        if(upcoming.length>=2){
-          const lonDiff=upcoming[upcoming.length-1].lon - upcoming[0].lon;
-          if(lonDiff>0.01) dir='ida';      // moving east = to Málaga
-          else if(lonDiff<-0.01) dir='vuelta'; // moving west = to Alhaurín
-        }
-
-        const key=dir==='vuelta'?lid+'_V':lid;
-        // Remove from other key if same vehicle was there
-        const otherKey=key===lid?lid+'_V':lid;
-        if(S.buses[otherKey]?.vehicleId===d.vehicleId) delete S.buses[otherKey];
+        
+        // Detect TRUE direction from where bus is heading
+        const trueDir=detectDir(upcoming, d.dir);
+        const key=trueDir==='vuelta'?lid+'_V':lid;
 
         S.buses[key]={
           lat:d.lat, lng:d.lon,
@@ -1189,10 +1203,10 @@ async function poll(){
           ts:Date.now(),
           vehicleId:d.vehicleId,
           service:d.service,
-          direction:dir,
-          nextStopName:next?.stopNombre||'',
+          direction:trueDir,
+          nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
           nextStopEta:next?.etaSeconds||null,
-          etas:upcoming  // ONLY upcoming stops
+          etas:upcoming
         };
         startDR(lid);
       }
