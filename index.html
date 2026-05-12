@@ -834,21 +834,28 @@ function drawBuses(){
   const lid=S.ml;
   const fresh=b=>b?.lat&&b?.lng&&b?.ts&&(Date.now()-b.ts)<600000;
 
-  // Show BOTH buses on map always (user can see both)
-  // But highlight the one matching selected direction
-  [
-    {b:S.buses[lid],    key:lid,      isVta:false},
-    {b:S.buses[lid+'_V'],key:lid+'_V',isVta:true}
-  ].forEach(({b,key,isVta})=>{
-    if(!fresh(b)){
-      if(S.markers[key]){try{S.map.removeLayer(S.markers[key])}catch(e){}delete S.markers[key];}
-      return;
-    }
+  // Collect all buses for this line
+  const allBuses=[];
+  for(const[key,b]of Object.entries(S.buses)){
+    if(!key.startsWith(lid))continue;
+    if(!fresh(b))continue;
+    const isVta=b.direction==='vuelta';
+    allBuses.push({b,key,isVta});
+  }
+
+  // Remove markers for stale buses
+  for(const[key,m]of Object.entries(S.markers)){
+    if(!key.startsWith(lid))continue;
+    const b=S.buses[key];
+    if(!fresh(b)){try{S.map.removeLayer(m)}catch(e){}delete S.markers[key];}
+  }
+
+  // Draw each active bus
+  for(const{b,key,isVta}of allBuses){
     const col=LINES[lid]?.col||'#00d4ff';
-    // Dim buses not matching selected direction
     const isSelected=(S.md==='i'&&!isVta)||(S.md==='v'&&isVta);
-    const opacity=isSelected?1:0.4;
-    const size=isSelected?28:20;
+    const opacity=isSelected?1:0.5;
+    const size=isSelected?28:22;
     const icon=L.divIcon({
       html:`<div style="font-size:${size}px;line-height:1;opacity:${opacity};filter:drop-shadow(0 2px 8px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
       iconSize:[0,0],iconAnchor:[0,0],className:''
@@ -859,11 +866,12 @@ function drawBuses(){
     } else {
       const ln=LINES[lid];
       const dirLabel=isVta?ln.vta:ln.ida;
+      const svc=b.service?` · ${b.service}`:'';
       const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:isSelected?1000:500}).addTo(S.map);
-      m.bindPopup(`<b>${lid} ${dirLabel}</b><br><small>${Math.round(b.speedKmh||0)} km/h</small>`);
+      m.bindPopup(`<b>${lid} ${dirLabel}${svc}</b><br><small>${Math.round(b.speedKmh||0)} km/h</small>`);
       S.markers[key]=m;
     }
-  });
+  }
 
   updateBusPanel();
   updateMapStatus();
@@ -1189,26 +1197,21 @@ function snapToRoute(lat,lon,route,distAhead){
 // ═══════════════════════════════════════════════════════════════════
 async function poll(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
-  
-  // Málaga terminus keywords - if last stop contains these = bus going TO Málaga (ida)
-  const MALAGA_TERMS=['autobuses','estación','málaga','malaga','velázquez','velazquez','perchel'];
-  // Alhaurín terminus keywords - if last stop contains these = bus going TO Alhaurín (vuelta)  
-  const ALHA_TERMS=['santa amalia','amalia','romeral','torrealquería','torrealqueria','alhaurín','alhaurin','pinos'];
+
+  const MALAGA_TERMS=['autobuses','estación','estacion','málaga','malaga','velázquez','velazquez','flex','porcelanosa'];
+  const ALHA_TERMS=['santa amalia','amalia','romeral','torrealquería','torrealqueria','alhaurín','alhaurin','pinos','arroyo'];
 
   function detectDir(upcoming, backendDir){
     if(!upcoming||upcoming.length===0) return backendDir||'ida';
-    // Check last upcoming stop name
     const lastStop=(upcoming[upcoming.length-1].stopName||'').toLowerCase();
-    const firstStop=(upcoming[0].stopName||'').toLowerCase();
-    if(MALAGA_TERMS.some(t=>lastStop.includes(t))) return 'ida';   // ends in Málaga
-    if(ALHA_TERMS.some(t=>lastStop.includes(t))) return 'vuelta';  // ends in Alhaurín
-    // Fallback: check longitude movement
+    if(MALAGA_TERMS.some(t=>lastStop.includes(t))) return 'ida';
+    if(ALHA_TERMS.some(t=>lastStop.includes(t))) return 'vuelta';
     if(upcoming.length>=2){
-      const lonFirst=upcoming[0].lon||0;
-      const lonLast=upcoming[upcoming.length-1].lon||0;
-      if(lonFirst&&lonLast){
-        if(lonLast>lonFirst+0.005) return 'ida';    // moving east = to Málaga
-        if(lonLast<lonFirst-0.005) return 'vuelta'; // moving west = to Alhaurín
+      const lons=upcoming.map(e=>e.lon).filter(Boolean);
+      if(lons.length>=2){
+        const diff=lons[lons.length-1]-lons[0];
+        if(diff>0.01) return 'ida';
+        if(diff<-0.01) return 'vuelta';
       }
     }
     return backendDir||'ida';
@@ -1216,47 +1219,54 @@ async function poll(){
 
   for(const lid of Object.keys(LINES)){
     try{
+      // Poll both endpoints simultaneously
       const[r1,r2]=await Promise.all([
         fetch(`${BE}/vehicles/${lid}`,{signal:to(8000)}),
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to(8000)})
       ]);
+
       for(const r of [r1,r2]){
         if(!r.ok)continue;
         const d=await r.json();
         if(!d?.lat||!d?.lon||!d?.isOnline)continue;
 
-        // Only upcoming stops
         const upcoming=(d.etas||[])
           .filter(e=>e.status==='next'||e.status==='upcoming')
           .map(e=>({
-            stopName:e.stopNombre,
-            etaMin:e.etaMinutes,
-            etaSec:e.etaSeconds,
-            stopIdx:e.stopIndex,
+            stopName:e.stopNombre, etaMin:e.etaMinutes,
+            etaSec:e.etaSeconds, stopIdx:e.stopIndex,
             lat:e.lat, lon:e.lon
           }));
 
         const next=d.etas?.find(e=>e.status==='next');
-        
-        // Detect TRUE direction from where bus is heading
         const trueDir=detectDir(upcoming, d.dir);
         const key=trueDir==='vuelta'?lid+'_V':lid;
 
-        S.buses[key]={
-          lat:d.lat, lng:d.lon,
-          speedKmh:d.speedKmh||0,
-          ts:Date.now(),
-          vehicleId:d.vehicleId,
-          service:d.service,
-          direction:trueDir,
-          nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-          nextStopEta:next?.etaSeconds||null,
-          etas:upcoming
-        };
+        // Store bus — if same key already exists with different vehicleId,
+        // keep the one with more upcoming stops (more info)
+        const existing=S.buses[key];
+        if(existing?.vehicleId&&existing.vehicleId!==d.vehicleId){
+          // Two different buses in same direction — store in _V2 slot
+          const key2=key+'_2';
+          S.buses[key2]={
+            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
+            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
+            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
+            nextStopEta:next?.etaSeconds||null, etas:upcoming
+          };
+        } else {
+          S.buses[key]={
+            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
+            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
+            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
+            nextStopEta:next?.etaSeconds||null, etas:upcoming
+          };
+        }
         startDR(lid);
       }
-    }catch(e){console.warn('[poll]',e.message);}
+    }catch(e){console.warn('[poll]',lid,e.message);}
   }
+
   updateHomeCards();
   updateNearStop();
   if(S.mapReady)drawBuses();
