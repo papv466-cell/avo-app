@@ -901,40 +901,33 @@ async function loadOSRM(pts,color){
 
 function drawBuses(){
   if(!S.mapReady||!S.map)return;
-  const lid=S.ml;
+  const lid=S.ml, dir=S.md;
   const fresh=b=>b?.lat&&b?.lng&&b?.ts&&(Date.now()-b.ts)<600000;
 
-  // Remove stale markers
+  // Remove ALL bus markers for this line first
   for(const[key,m]of Object.entries(S.markers)){
-    if(!key.startsWith(lid))continue;
-    if(!fresh(S.buses[key])){
-      try{S.map.removeLayer(m)}catch(e){}
-      delete S.markers[key];
-    }
+    if(!key.startsWith(lid)){continue;}
+    try{S.map.removeLayer(m)}catch(e){}
+    delete S.markers[key];
   }
 
-  // Draw each active bus
-  for(const[key,b]of Object.entries(S.buses)){
-    if(!key.startsWith(lid)||!fresh(b))continue;
-    const isVta=b.direction==='vuelta';
-    const col=LINES[lid]?.col||'#00d4ff';
-    const icon=L.divIcon({
-      html:`<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 10px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
-      iconSize:[0,0],iconAnchor:[0,0],className:''
-    });
+  // Only draw bus for SELECTED direction
+  const busKey=dir==='i'?lid:lid+'_V';
+  const b=S.buses[busKey];
+  if(!fresh(b))return; // No bus in this direction - show nothing
 
-    if(S.markers[key]){
-      S.markers[key].setIcon(icon);
-      // Always update to latest GPS position - DR will smooth from here
-      // The GPS is the ground truth, DR just fills the gap between updates
-      S.markers[key].setLatLng([b.lat,b.lng]);
-    } else {
-      const ln=LINES[lid];
-      const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:1000}).addTo(S.map);
-      m.bindPopup(`<b>${lid} ${isVta?ln.vta:ln.ida}</b>${b.service?' · sal. '+b.service:''}`);
-      S.markers[key]=m;
-    }
-  }
+  const isVta=b.direction==='vuelta';
+  const col=LINES[lid]?.col||'#00d4ff';
+  const emoji=isVta?'🚍':'🚌';
+  const icon=L.divIcon({
+    html:`<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 12px ${col});transform:translate(-50%,-50%)">${emoji}</div>`,
+    iconSize:[0,0],iconAnchor:[0,0],className:''
+  });
+
+  const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:1000}).addTo(S.map);
+  const ln=LINES[lid];
+  m.bindPopup(`<b>${lid} ${isVta?ln.vta:ln.ida}</b>${b.service?' · sal. '+b.service:''}`);
+  S.markers[busKey]=m;
 
   updateBusPanel();
   updateMapStatus();
@@ -942,14 +935,31 @@ function drawBuses(){
 
 function updateBusPanel(){
   const lid=S.ml, dir=S.md;
-  // Show the bus matching current direction, fallback to any active bus
-  const bDir=dir==='i'?S.buses[lid]:S.buses[lid+'_V'];
-  const bOther=dir==='i'?S.buses[lid+'_V']:S.buses[lid];
-  const b=bDir?.ts&&(Date.now()-bDir.ts)<600000 ? bDir :
-           bOther?.ts&&(Date.now()-bOther.ts)<600000 ? bOther : null;
+  // STRICT: only show bus matching selected direction
+  const bKey=dir==='i'?lid:lid+'_V';
+  const b=S.buses[bKey]?.ts&&(Date.now()-S.buses[bKey].ts)<600000?S.buses[bKey]:null;
 
   const panel=document.getElementById('bus-panel');
-  if(!b){panel.classList.remove('show');return;}
+  if(!b){
+    // Show panel with schedule info even when no active bus
+    panel.classList.add('show');
+    const ln=LINES[lid];
+    const badge=document.getElementById('bp-badge');
+    badge.textContent=lid; badge.style.background=hex2rgba(ln.col,.2); badge.style.color=ln.col;
+    const dirLabel=dir==='i'?ln.ida:ln.vta;
+    document.getElementById('bp-dir').textContent=dirLabel;
+    document.getElementById('bp-gps').style.display='none';
+    // Find next scheduled departure
+    const now=new Date();
+    const nowM=now.getHours()*60+now.getMinutes();
+    const dk=['do','lv','lv','lv','lv','lv','sa'][now.getDay()];
+    const times=(SCH[lid]?.[dk]?.[dir==='i'?'ida':'vta']||[]);
+    const nxt=times.find(t=>{const[h,m]=t.split(':').map(Number);return h*60+m>nowM;});
+    document.getElementById('bp-stops').innerHTML=nxt
+      ?`<div style="padding:8px 0;font-size:12px;color:var(--ink3)">Sin bus activo · Próximo: <span style="color:var(--cyan);font-weight:700">${nxt}</span></div>`
+      :`<div style="padding:8px 0;font-size:12px;color:var(--ink3)">Sin más servicios hoy</div>`;
+    return;
+  }
   panel.classList.add('show');
 
   const ln=LINES[lid];
