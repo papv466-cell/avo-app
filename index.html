@@ -925,13 +925,9 @@ function drawBuses(){
 
     if(S.markers[key]){
       S.markers[key].setIcon(icon);
-      // Only snap to GPS if DR hasn't moved it recently
-      const drElapsed=b.gpsTs?(Date.now()-b.gpsTs)/1000:999;
-      if(drElapsed>180){
-        // DR expired, snap to GPS
-        S.markers[key].setLatLng([b.lat,b.lng]);
-      }
-      // Otherwise let DR handle movement
+      // Always update to latest GPS position - DR will smooth from here
+      // The GPS is the ground truth, DR just fills the gap between updates
+      S.markers[key].setLatLng([b.lat,b.lng]);
     } else {
       const ln=LINES[lid];
       const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:1000}).addTo(S.map);
@@ -1329,12 +1325,15 @@ function startDR(lid){
       if(!marker)continue;
 
       if(route.length>=2){
-        // Snap FROM the GPS anchor point, not from current marker position
+        // Project forward from GPS anchor along route
         const pos=snapToRoute(b.gpsLat,b.gpsLng,route,dist);
         if(pos)marker.setLatLng(pos);
+      } else {
+        // No route - simple linear interpolation from GPS
+        marker.setLatLng([b.gpsLat,b.gpsLng]);
       }
     }
-  },2000);
+  },1500);
 }
 
 function snapToRoute(lat,lon,route,distAhead){
