@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#080f1e">
 <title>AVO · Málaga</title>
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%23080f1e'/><text x='90' y='135' font-size='100' text-anchor='middle'>🚌</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -327,6 +328,51 @@ input{font-family:inherit;border:none;outline:none;background:none;color:inherit
   </nav>
 </div>
 <div id="toast"></div>
+
+<!-- Install prompt -->
+<div id="install-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:flex-end;justify-content:center;padding-bottom:20px">
+  <div style="background:#0d1829;border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:24px;margin:0 16px;max-width:400px;width:100%">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:56px;margin-bottom:8px">🚌</div>
+      <div style="font-size:20px;font-weight:800;color:#e8f0ff;margin-bottom:4px">AVO Group</div>
+      <div style="font-size:13px;color:#8fa8cc">Añade la app a tu pantalla de inicio</div>
+    </div>
+    <div id="install-steps-ios" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">1️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Pulsa el botón <strong style="color:#00d4ff">Compartir</strong> <span style="font-size:16px">⬆️</span> en Safari</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">2️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Selecciona <strong style="color:#00d4ff">«Añadir a pantalla de inicio»</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">3️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Pulsa <strong style="color:#00d4ff">Añadir</strong> en la esquina superior derecha</div>
+        </div>
+      </div>
+    </div>
+    <div id="install-steps-android" style="display:none">
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">1️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Pulsa el menú <strong style="color:#00d4ff">⋮</strong> de Chrome</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">2️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Selecciona <strong style="color:#00d4ff">«Añadir a pantalla de inicio»</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:24px">3️⃣</div>
+          <div style="font-size:13px;color:#e8f0ff">Confirma pulsando <strong style="color:#00d4ff">Añadir</strong></div>
+        </div>
+      </div>
+    </div>
+    <button onclick="closeInstall()" style="width:100%;background:#00d4ff;color:#000;font-size:15px;font-weight:800;border-radius:12px;padding:14px;cursor:pointer">Entendido</button>
+    <button onclick="closeInstallForever()" style="width:100%;background:none;color:#4a6080;font-size:12px;padding:10px;cursor:pointer;margin-top:4px">No mostrar más</button>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -1508,8 +1554,33 @@ async function boot(){
   // Periodic updates
   setInterval(poll,10000);
   setInterval(()=>{updateHomeCards();updateNearStop();},5000);
+  // Show install prompt first 3 times
+  showInstallPrompt();
   // Keep Render free tier warm (pings every 4 min to avoid 50s cold start)
   setInterval(()=>fetch(BE+'/vehicles/M135').catch(()=>{}),240000);
+}
+
+function showInstallPrompt(){
+  // Don't show if already installed as PWA
+  if(window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches)return;
+  const count=parseInt(localStorage.getItem('avo_install_shown')||'0');
+  if(count>=3)return;
+  localStorage.setItem('avo_install_shown',count+1);
+  setTimeout(()=>{
+    const el=document.getElementById('install-overlay');
+    if(!el)return;
+    el.style.display='flex';
+    const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+    document.getElementById('install-steps-ios').style.display=isIOS?'block':'none';
+    document.getElementById('install-steps-android').style.display=isIOS?'none':'block';
+  },2000);
+}
+function closeInstall(){
+  document.getElementById('install-overlay').style.display='none';
+}
+function closeInstallForever(){
+  localStorage.setItem('avo_install_shown','99');
+  document.getElementById('install-overlay').style.display='none';
 }
 
 document.addEventListener('DOMContentLoaded',boot);
