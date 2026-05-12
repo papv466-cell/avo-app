@@ -986,11 +986,10 @@ function updateBusPanel(){
   }
 
   stopsEl.innerHTML=etas.slice(0,6).map((e,i)=>{
-    // Live countdown: etaSec minus elapsed time since last GPS
     const liveSec=e.etaSec!=null?Math.max(0,e.etaSec-elapsed):null;
     const liveMin=liveSec!=null?Math.round(liveSec/60):e.etaMin!=null?Math.max(0,e.etaMin):null;
     const col=liveMin===0?'var(--green)':liveMin!=null&&liveMin<=2?'var(--green)':'var(--cyan)';
-    const name=(e.stopName||'').replace(/,.*$/,''); // strip city suffix
+    const name=(e.stopName||'').split(',')[0];
     return`<div class="bp-stop ${i===0?'now':''}">
       <div class="bp-stop-name">${name}</div>
       <div class="bp-stop-eta" style="color:${col}">${liveMin!=null?liveMin:'—'}</div>
@@ -1371,7 +1370,6 @@ function snapToRoute(lat,lon,route,distAhead){
 // ═══════════════════════════════════════════════════════════════════
 async function poll(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
-  const seenVehicles={};
 
   for(const lid of Object.keys(LINES)){
     try{
@@ -1380,47 +1378,35 @@ async function poll(){
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to(8000)})
       ]);
 
-      // r1 = IDA endpoint → ALWAYS store as lid (ida)
+      // IDA endpoint → store as lid
       if(r1.ok){
         const d=await r1.json();
-        if(d?.lat&&d?.lon&&d?.isOnline&&!seenVehicles[lid+'_'+d.vehicleId]){
-          seenVehicles[lid+'_'+d.vehicleId]=true;
-          const upcoming=(d.etas||[])
-            .filter(e=>e.status==='next'||e.status==='upcoming')
-            .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,etaSec:e.etaSeconds,stopIdx:e.stopIndex,lat:e.lat,lon:e.lon}));
-          const next=d.etas?.find(e=>e.status==='next');
+        if(d?.lat&&d?.lon&&d?.isOnline){
           const prev=S.buses[lid];
-          const moved=!prev||Math.abs((prev.lat||0)-d.lat)>0.0001||Math.abs((prev.lng||0)-d.lon)>0.0001;
+          const moved=!prev||haversine(prev.lat||0,prev.lng||0,d.lat,d.lon)>50;
           S.buses[lid]={
-            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,ts:Date.now(),
-            vehicleId:d.vehicleId,service:d.service,
-            direction:'ida',  // ALWAYS ida from /M135
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null,etas:upcoming,
-            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now()
+            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,
+            ts:Date.now(),vehicleId:d.vehicleId,service:d.service,
+            direction:'ida',
+            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now(),
+            etas:calcETAs(lid,'i',d.lat,d.lon,d.speedKmh||20)
           };
           if(moved)startDR(lid);
         }
       }
 
-      // r2 = VUELTA endpoint → ALWAYS store as lid_V (vuelta)
+      // VUELTA endpoint → store as lid_V  
       if(r2.ok){
         const d=await r2.json();
-        if(d?.lat&&d?.lon&&d?.isOnline&&!seenVehicles[lid+'_'+d.vehicleId]){
-          seenVehicles[lid+'_'+d.vehicleId]=true;
-          const upcoming=(d.etas||[])
-            .filter(e=>e.status==='next'||e.status==='upcoming')
-            .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,etaSec:e.etaSeconds,stopIdx:e.stopIndex,lat:e.lat,lon:e.lon}));
-          const next=d.etas?.find(e=>e.status==='next');
+        if(d?.lat&&d?.lon&&d?.isOnline){
           const prev=S.buses[lid+'_V'];
-          const moved=!prev||Math.abs((prev.lat||0)-d.lat)>0.0001||Math.abs((prev.lng||0)-d.lon)>0.0001;
+          const moved=!prev||haversine(prev.lat||0,prev.lng||0,d.lat,d.lon)>50;
           S.buses[lid+'_V']={
-            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,ts:Date.now(),
-            vehicleId:d.vehicleId,service:d.service,
-            direction:'vuelta',  // ALWAYS vuelta from /M135_V
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null,etas:upcoming,
-            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now()
+            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,
+            ts:Date.now(),vehicleId:d.vehicleId,service:d.service,
+            direction:'vuelta',
+            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now(),
+            etas:calcETAs(lid,'v',d.lat,d.lon,d.speedKmh||20)
           };
           if(moved)startDR(lid);
         }
@@ -1433,6 +1419,42 @@ async function poll(){
   if(S.mapReady)drawBuses();
   if(S.pg==='p-stops')renderStops();
   if(S.pg==='p-sched')renderSched();
+}
+
+// Calculate ETAs from our own stop list based on GPS position
+function calcETAs(lid, dir, busLat, busLon, speedKmh){
+  const stopKey=dir==='v'?lid+'_V':lid;
+  const stops=S.stops[stopKey]||S.stops[lid]||[];
+  if(!stops.length)return[];
+
+  // Find closest stop to bus current position
+  let minDist=Infinity, busStopIdx=0;
+  stops.forEach((s,i)=>{
+    if(!s.A||!s.G)return;
+    const d=haversine(busLat,busLon,s.A,s.G);
+    if(d<minDist){minDist=d;busStopIdx=i;}
+  });
+
+  // Return next stops AFTER current position with estimated times
+  const spd=Math.max(10,speedKmh)*1000/3600; // m/s
+  const results=[];
+  let cumDist=minDist; // distance from bus to first stop
+
+  for(let i=busStopIdx+1;i<stops.length&&results.length<8;i++){
+    const prev=stops[i-1];
+    const curr=stops[i];
+    if(!curr.A||!curr.G)continue;
+    cumDist+=haversine(prev.A||busLat,prev.G||busLon,curr.A,curr.G);
+    const etaSec=Math.round(cumDist/spd);
+    results.push({
+      stopName:curr.N,
+      etaSec,
+      etaMin:Math.round(etaSec/60),
+      stopIdx:i,
+      lat:curr.A,lon:curr.G
+    });
+  }
+  return results;
 }
 
 // ═══════════════════════════════════════════════════════════════════
