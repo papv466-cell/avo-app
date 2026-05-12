@@ -918,7 +918,7 @@ function drawBuses(){
 
   const isVta=b.direction==='vuelta';
   const col=LINES[lid]?.col||'#00d4ff';
-  const emoji=isVta?'🚍':'🚌';
+  const emoji=isVta?'🚍':'🚌'; // 🚌=going to Malaga, 🚍=going to Alhaurin
   const icon=L.divIcon({
     html:`<div style="font-size:28px;line-height:1;filter:drop-shadow(0 2px 12px ${col});transform:translate(-50%,-50%)">${emoji}</div>`,
     iconSize:[0,0],iconAnchor:[0,0],className:''
@@ -969,7 +969,7 @@ function updateBusPanel(){
   badge.style.color=ln.col;
 
   const isVta=b.direction==='vuelta';
-  document.getElementById('bp-dir').textContent=isVta?ln.vta:ln.ida;
+  document.getElementById('bp-dir').textContent=dir==='i'?ln.ida:ln.vta;
 
   const ago=b.ts?Math.round((Date.now()-b.ts)/1000):999;
   const gpsEl=document.getElementById('bp-gps');
@@ -1371,27 +1371,6 @@ function snapToRoute(lat,lon,route,distAhead){
 // ═══════════════════════════════════════════════════════════════════
 async function poll(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
-
-  const MALAGA_TERMS=['autobuses','estación','estacion','málaga','malaga','velázquez','velazquez','flex','porcelanosa'];
-  const ALHA_TERMS=['santa amalia','amalia','romeral','torrealquería','torrealqueria','alhaurín','alhaurin','pinos','arroyo'];
-
-  function detectDir(upcoming, backendDir){
-    if(!upcoming||!upcoming.length) return backendDir||'ida';
-    const last=(upcoming[upcoming.length-1].stopName||'').toLowerCase();
-    if(MALAGA_TERMS.some(t=>last.includes(t))) return 'ida';
-    if(ALHA_TERMS.some(t=>last.includes(t))) return 'vuelta';
-    if(upcoming.length>=2){
-      const lons=upcoming.map(e=>e.lon).filter(Boolean);
-      if(lons.length>=2){
-        const diff=lons[lons.length-1]-lons[0];
-        if(diff>0.01) return 'ida';
-        if(diff<-0.01) return 'vuelta';
-      }
-    }
-    return backendDir||'ida';
-  }
-
-  // Track which vehicleIds we've seen this poll to avoid duplicates
   const seenVehicles={};
 
   for(const lid of Object.keys(LINES)){
@@ -1401,52 +1380,50 @@ async function poll(){
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to(8000)})
       ]);
 
-      for(const r of [r1,r2]){
-        if(!r.ok)continue;
-        const d=await r.json();
-        // Skip if no position or offline
-        if(!d?.lat||!d?.lon||!d?.isOnline)continue;
-        // Skip duplicate vehicleId already processed this poll
-        if(d.vehicleId&&seenVehicles[lid+'_'+d.vehicleId])continue;
-        if(d.vehicleId)seenVehicles[lid+'_'+d.vehicleId]=true;
-
-        const upcoming=(d.etas||[])
-          .filter(e=>e.status==='next'||e.status==='upcoming')
-          .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,etaSec:e.etaSeconds,stopIdx:e.stopIndex,lat:e.lat,lon:e.lon}));
-
-        const next=d.etas?.find(e=>e.status==='next');
-        const trueDir=detectDir(upcoming,d.dir);
-        const key=trueDir==='vuelta'?lid+'_V':lid;
-
-        // If this vehicle was in the other slot, remove it
-        const otherKey=key===lid?lid+'_V':lid;
-        if(S.buses[otherKey]?.vehicleId===d.vehicleId){
-          delete S.buses[otherKey];
-          if(S.markers[otherKey]){
-            try{S.map&&S.map.removeLayer(S.markers[otherKey])}catch(e){}
-            delete S.markers[otherKey];
-          }
+      // r1 = IDA endpoint → ALWAYS store as lid (ida)
+      if(r1.ok){
+        const d=await r1.json();
+        if(d?.lat&&d?.lon&&d?.isOnline&&!seenVehicles[lid+'_'+d.vehicleId]){
+          seenVehicles[lid+'_'+d.vehicleId]=true;
+          const upcoming=(d.etas||[])
+            .filter(e=>e.status==='next'||e.status==='upcoming')
+            .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,etaSec:e.etaSeconds,stopIdx:e.stopIndex,lat:e.lat,lon:e.lon}));
+          const next=d.etas?.find(e=>e.status==='next');
+          const prev=S.buses[lid];
+          const moved=!prev||Math.abs((prev.lat||0)-d.lat)>0.0001||Math.abs((prev.lng||0)-d.lon)>0.0001;
+          S.buses[lid]={
+            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,ts:Date.now(),
+            vehicleId:d.vehicleId,service:d.service,
+            direction:'ida',  // ALWAYS ida from /M135
+            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
+            nextStopEta:next?.etaSeconds||null,etas:upcoming,
+            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now()
+          };
+          if(moved)startDR(lid);
         }
+      }
 
-        const prev=S.buses[key];
-        const posChanged=!prev||Math.abs(prev.lat-d.lat)>0.0001||Math.abs(prev.lng-d.lon)>0.0001;
-
-        S.buses[key]={
-          lat:d.lat, lng:d.lon,
-          speedKmh:d.speedKmh||0,
-          ts:Date.now(),
-          vehicleId:d.vehicleId,
-          service:d.service,
-          direction:trueDir,
-          nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-          nextStopEta:next?.etaSeconds||null,
-          etas:upcoming,
-          // Store GPS anchor for dead reckoning
-          gpsLat:d.lat, gpsLng:d.lon, gpsTs:Date.now()
-        };
-
-        // Only restart DR if position actually changed
-        if(posChanged)startDR(lid);
+      // r2 = VUELTA endpoint → ALWAYS store as lid_V (vuelta)
+      if(r2.ok){
+        const d=await r2.json();
+        if(d?.lat&&d?.lon&&d?.isOnline&&!seenVehicles[lid+'_'+d.vehicleId]){
+          seenVehicles[lid+'_'+d.vehicleId]=true;
+          const upcoming=(d.etas||[])
+            .filter(e=>e.status==='next'||e.status==='upcoming')
+            .map(e=>({stopName:e.stopNombre,etaMin:e.etaMinutes,etaSec:e.etaSeconds,stopIdx:e.stopIndex,lat:e.lat,lon:e.lon}));
+          const next=d.etas?.find(e=>e.status==='next');
+          const prev=S.buses[lid+'_V'];
+          const moved=!prev||Math.abs((prev.lat||0)-d.lat)>0.0001||Math.abs((prev.lng||0)-d.lon)>0.0001;
+          S.buses[lid+'_V']={
+            lat:d.lat,lng:d.lon,speedKmh:d.speedKmh||0,ts:Date.now(),
+            vehicleId:d.vehicleId,service:d.service,
+            direction:'vuelta',  // ALWAYS vuelta from /M135_V
+            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
+            nextStopEta:next?.etaSeconds||null,etas:upcoming,
+            gpsLat:d.lat,gpsLng:d.lon,gpsTs:Date.now()
+          };
+          if(moved)startDR(lid);
+        }
       }
     }catch(e){console.warn('[poll]',lid,e.message);}
   }
