@@ -904,42 +904,45 @@ function drawBuses(){
   const lid=S.ml;
   const fresh=b=>b?.lat&&b?.lng&&b?.ts&&(Date.now()-b.ts)<600000;
 
-  // Collect all buses for this line
-  const allBuses=[];
+  // Get all active buses for this line
+  const activeBuses=[];
   for(const[key,b]of Object.entries(S.buses)){
-    if(!key.startsWith(lid))continue;
-    if(!fresh(b))continue;
-    const isVta=b.direction==='vuelta';
-    allBuses.push({b,key,isVta});
+    if(!key.startsWith(lid)||!fresh(b))continue;
+    activeBuses.push({b,key,isVta:b.direction==='vuelta'});
   }
 
-  // Remove markers for stale buses
+  // Remove stale markers
   for(const[key,m]of Object.entries(S.markers)){
     if(!key.startsWith(lid))continue;
-    const b=S.buses[key];
-    if(!fresh(b)){try{S.map.removeLayer(m)}catch(e){}delete S.markers[key];}
+    if(!fresh(S.buses[key])){
+      try{S.map.removeLayer(m)}catch(e){}
+      delete S.markers[key];
+    }
   }
 
-  // Draw each active bus
-  for(const{b,key,isVta}of allBuses){
+  // Draw each active bus - full opacity always, just different emoji
+  for(const{b,key,isVta}of activeBuses){
     const col=LINES[lid]?.col||'#00d4ff';
-    const isSelected=(S.md==='i'&&!isVta)||(S.md==='v'&&isVta);
-    const opacity=isSelected?1:0.5;
-    const size=isSelected?28:22;
+    const emoji=isVta?'🚍':'🚌';
     const icon=L.divIcon({
-      html:`<div style="font-size:${size}px;line-height:1;opacity:${opacity};filter:drop-shadow(0 2px 8px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
+      html:`<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 10px ${col});transform:translate(-50%,-50%)">${emoji}</div>`,
       iconSize:[0,0],iconAnchor:[0,0],className:''
     });
     if(S.markers[key]){
-      S.markers[key].setLatLng([b.lat,b.lng]);
       S.markers[key].setIcon(icon);
+      // Only update position from GPS if dead reckoning is not active
+      // (DR will handle smooth movement)
+      if(!S.drActive?.[key]){
+        S.markers[key].setLatLng([b.lat,b.lng]);
+      }
     } else {
       const ln=LINES[lid];
-      const dirLabel=isVta?ln.vta:ln.ida;
-      const svc=b.service?` · ${b.service}`:'';
-      const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:isSelected?1000:500}).addTo(S.map);
-      m.bindPopup(`<b>${lid} ${dirLabel}${svc}</b><br><small>${Math.round(b.speedKmh||0)} km/h</small>`);
+      const m=L.marker([b.lat,b.lng],{icon,zIndexOffset:1000}).addTo(S.map);
+      m.bindPopup(`<b>${lid} ${isVta?ln.vta:ln.ida}</b>${b.service?' · sal. '+b.service:''}<br><small>${Math.round(b.speedKmh||0)} km/h</small>`);
       S.markers[key]=m;
+      // Start dead reckoning for this bus
+      if(!S.drActive) S.drActive={};
+      S.drActive[key]=false;
     }
   }
 
@@ -1309,43 +1312,37 @@ function showGPSPrompt(){
 // ═══════════════════════════════════════════════════════════════════
 function startDR(lid){
   if(S.drTimers[lid])clearInterval(S.drTimers[lid]);
+  if(!S.drActive)S.drActive={};
+
   S.drTimers[lid]=setInterval(()=>{
     if(!S.mapReady||!S.map)return;
-    [
-      {b:S.buses[lid],    key:lid,      isVta:false},
-      {b:S.buses[lid+'_V'],key:lid+'_V',isVta:true}
-    ].forEach(({b,key,isVta})=>{
-      if(!b?.lat||!b?.lng||!b?.ts)return;
+
+    for(const[key,b]of Object.entries(S.buses)){
+      if(!key.startsWith(lid))continue;
+      if(!b?.lat||!b?.lng||!b?.ts)continue;
+
       const elapsed=(Date.now()-b.ts)/1000;
-      if(elapsed<1||elapsed>300)return; // move up to 5min after last fix
-      
-      const spd=Math.max(5,Math.min(b.speedKmh||20,120))/3.6; // m/s
+      if(elapsed<1||elapsed>180)continue;
+
+      const spd=Math.max(5,Math.min(b.speedKmh||20,120))/3.6;
       const dist=spd*elapsed;
-      
-      // Get route for this direction
+
+      const isVta=b.direction==='vuelta';
       const routeKey=isVta?lid+'_V':lid;
       const route=ROUTES[routeKey]||ROUTES[lid]||[];
-      
+
+      const marker=S.markers[key];
+      if(!marker)continue;
+
       if(route.length>=2){
         const pos=snapToRoute(b.lat,b.lng,route,dist);
         if(pos){
-          // Create marker if it doesn't exist yet
-          if(!S.markers[key]&&S.ml===lid){
-            const col=LINES[lid]?.col||'#00d4ff';
-            const icon=L.divIcon({
-              html:`<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 12px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
-              iconSize:[0,0],iconAnchor:[0,0],className:''
-            });
-            S.markers[key]=L.marker(pos,{icon,zIndexOffset:1000}).addTo(S.map);
-          }
-          if(S.markers[key])S.markers[key].setLatLng(pos);
+          marker.setLatLng(pos);
+          S.drActive[key]=true;
         }
-      } else {
-        // No route - just move marker to GPS position
-        if(S.markers[key])S.markers[key].setLatLng([b.lat,b.lng]);
       }
-    });
-  },2000); // every 2 seconds for smooth animation
+    }
+  },2000);
 }
 
 function snapToRoute(lat,lon,route,distAhead){
@@ -1421,23 +1418,21 @@ async function poll(){
         // Store bus — if same key already exists with different vehicleId,
         // keep the one with more upcoming stops (more info)
         const existing=S.buses[key];
-        if(existing?.vehicleId&&existing.vehicleId!==d.vehicleId){
-          // Two different buses in same direction — store in _V2 slot
-          const key2=key+'_2';
-          S.buses[key2]={
-            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
-            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null, etas:upcoming
-          };
-        } else {
-          S.buses[key]={
-            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
-            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null, etas:upcoming
-          };
+        // Remove from opposite direction if same vehicleId (prevents duplicate)
+        const otherKey=key===lid?lid+'_V':lid;
+        if(S.buses[otherKey]?.vehicleId===d.vehicleId){
+          delete S.buses[otherKey];
+          if(S.markers[otherKey]){try{S.map&&S.map.removeLayer(S.markers[otherKey])}catch(e){}delete S.markers[otherKey];}
         }
+        // Reset DR so GPS position takes effect immediately
+        if(!S.drActive)S.drActive={};
+        S.drActive[key]=false;
+        S.buses[key]={
+          lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
+          vehicleId:d.vehicleId, service:d.service, direction:trueDir,
+          nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
+          nextStopEta:next?.etaSeconds||null, etas:upcoming
+        };
         startDR(lid);
       }
     }catch(e){console.warn('[poll]',lid,e.message);}
