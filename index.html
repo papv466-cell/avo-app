@@ -928,22 +928,13 @@ function drawBuses(){
   const lid=S.ml;
   const fresh=b=>b?.lat&&b?.lng&&b?.ts&&(Date.now()-b.ts)<600000;
 
-  // ONLY these two exact keys - nothing else
-  const validKeys=[lid, lid+'_V'];
-
-  // Remove ALL markers for this line first
+  // Remove ALL existing markers from map - clean slate every time
   for(const[key,m]of Object.entries(S.markers)){
-    if(validKeys.includes(key)){
-      if(!fresh(S.buses[key])){
-        try{S.map.removeLayer(m)}catch(e){}
-        delete S.markers[key];
-      }
-    } else if(key.startsWith(lid)){
-      // Remove any extra slots (M135_V_2 etc)
-      try{S.map.removeLayer(m)}catch(e){}
-      delete S.markers[key];
-    }
+    try{S.map.removeLayer(m)}catch(e){}
   }
+  S.markers={};
+
+  const validKeys=[lid, lid+'_V'];
 
   // Draw ONLY the bus matching selected direction
   for(const key of validKeys){
@@ -1044,11 +1035,15 @@ function setDir(d){
   document.getElementById('dir-ida').className='dir-btn'+(d==='i'?' on':'');
   document.getElementById('dir-vta').className='dir-btn'+(d==='v'?' on':'');
   drawMap();
-  updateBusPanel();
 }
 
 function setMapLine(lid){
   S.ml=lid;
+  // Clear ALL markers when switching lines
+  for(const[key,m]of Object.entries(S.markers)){
+    try{S.map&&S.map.removeLayer(m)}catch(e){}
+  }
+  S.markers={};
   document.querySelectorAll('.line-pill').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.line-pill').forEach(p=>p.style.cssText='');
   const pill=document.getElementById('mpill-'+lid);
