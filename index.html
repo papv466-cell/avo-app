@@ -1508,71 +1508,45 @@ function calcETAs(lid, dir, busLat, busLon, speedKmh){
 async function poll(){
   const to=ms=>AbortSignal.timeout?AbortSignal.timeout(ms):undefined;
 
-  const MALAGA_TERMS=['autobuses','estación','estacion','málaga','malaga','velázquez','velazquez','flex','porcelanosa'];
-  const ALHA_TERMS=['santa amalia','amalia','romeral','torrealquería','torrealqueria','alhaurín','alhaurin','pinos','arroyo'];
-
-  function detectDir(upcoming, backendDir){
-    if(!upcoming||upcoming.length===0) return backendDir||'ida';
-    const lastStop=(upcoming[upcoming.length-1].stopName||'').toLowerCase();
-    if(MALAGA_TERMS.some(t=>lastStop.includes(t))) return 'ida';
-    if(ALHA_TERMS.some(t=>lastStop.includes(t))) return 'vuelta';
-    if(upcoming.length>=2){
-      const lons=upcoming.map(e=>e.lon).filter(Boolean);
-      if(lons.length>=2){
-        const diff=lons[lons.length-1]-lons[0];
-        if(diff>0.01) return 'ida';
-        if(diff<-0.01) return 'vuelta';
-      }
-    }
-    return backendDir||'ida';
-  }
-
   for(const lid of Object.keys(LINES)){
     try{
-      // Poll both endpoints simultaneously
       const[r1,r2]=await Promise.all([
         fetch(`${BE}/vehicles/${lid}`,{signal:to(8000)}),
         fetch(`${BE}/vehicles/${lid}_V`,{signal:to(8000)})
       ]);
 
-      for(const r of [r1,r2]){
-        if(!r.ok)continue;
-        const d=await r.json();
-        if(!d?.lat||!d?.lon||!d?.isOnline)continue;
-
-        const upcoming=(d.etas||[])
-          .filter(e=>e.status==='next'||e.status==='upcoming')
-          .map(e=>({
-            stopName:e.stopNombre, etaMin:e.etaMinutes,
-            etaSec:e.etaSeconds, stopIdx:e.stopIndex,
-            lat:e.lat, lon:e.lon
-          }));
-
-        const next=d.etas?.find(e=>e.status==='next');
-        const trueDir=detectDir(upcoming, d.dir);
-        const key=trueDir==='vuelta'?lid+'_V':lid;
-
-        // Store bus — if same key already exists with different vehicleId,
-        // keep the one with more upcoming stops (more info)
-        const existing=S.buses[key];
-        if(existing?.vehicleId&&existing.vehicleId!==d.vehicleId){
-          // Two different buses in same direction — store in _V2 slot
-          const key2=key+'_2';
-          S.buses[key2]={
-            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
-            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null, etas:upcoming
+      // /vehicles/M135 → ALWAYS ida
+      if(r1.ok){
+        const d=await r1.json();
+        if(d?.lat&&d?.lon&&d?.isOnline){
+          const prev=S.buses[lid];
+          const moved=!prev||haversine(prev.lat||0,prev.lng||0,d.lat,d.lon)>50;
+          S.buses[lid]={
+            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0,
+            ts:Date.now(), vehicleId:d.vehicleId, service:d.service,
+            direction:'ida',
+            gpsLat:d.lat, gpsLng:d.lon, gpsTs:Date.now(),
+            etas:calcETAs(lid,'i',d.lat,d.lon,d.speedKmh||20)
           };
-        } else {
-          S.buses[key]={
-            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0, ts:Date.now(),
-            vehicleId:d.vehicleId, service:d.service, direction:trueDir,
-            nextStopName:next?.stopNombre||upcoming[0]?.stopName||'',
-            nextStopEta:next?.etaSeconds||null, etas:upcoming
-          };
+          if(moved)startDR(lid);
         }
-        startDR(lid);
+      }
+
+      // /vehicles/M135_V → ALWAYS vuelta
+      if(r2.ok){
+        const d=await r2.json();
+        if(d?.lat&&d?.lon&&d?.isOnline){
+          const prev=S.buses[lid+'_V'];
+          const moved=!prev||haversine(prev.lat||0,prev.lng||0,d.lat,d.lon)>50;
+          S.buses[lid+'_V']={
+            lat:d.lat, lng:d.lon, speedKmh:d.speedKmh||0,
+            ts:Date.now(), vehicleId:d.vehicleId, service:d.service,
+            direction:'vuelta',
+            gpsLat:d.lat, gpsLng:d.lon, gpsTs:Date.now(),
+            etas:calcETAs(lid,'v',d.lat,d.lon,d.speedKmh||20)
+          };
+          if(moved)startDR(lid);
+        }
       }
     }catch(e){console.warn('[poll]',lid,e.message);}
   }
