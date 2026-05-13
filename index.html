@@ -945,11 +945,14 @@ function drawBuses(){
     }
   }
 
-  // Draw exactly ida and vuelta
+  // Draw ONLY the bus matching selected direction
   for(const key of validKeys){
     const b=S.buses[key];
     if(!fresh(b))continue;
     const isVta=(key===lid+'_V');
+    // Only show bus for selected direction
+    if(S.md==='i'&&isVta)continue;
+    if(S.md==='v'&&!isVta)continue;
     const col=LINES[lid]?.col||'#00d4ff';
     const icon=L.divIcon({
       html:`<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 10px ${col});transform:translate(-50%,-50%)">${isVta?'🚍':'🚌'}</div>`,
